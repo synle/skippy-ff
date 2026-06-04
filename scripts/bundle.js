@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Skippy bundle script. Syncs manifest version then zips dist/ into skippy.zip. */
+/** Skippy bundle script. Syncs manifest version then zips dist/ into skippy-ff.zip. */
 
 import { createWriteStream, existsSync } from "fs";
 import { readFile, writeFile } from "fs/promises";
@@ -10,7 +10,7 @@ import archiver from "archiver";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 const distDir = join(rootDir, "dist");
-const outputPath = join(rootDir, "skippy.zip");
+const outputPath = join(rootDir, "skippy-ff.zip");
 
 /**
  * Sync manifest.json version from package.json in both dist/ and src/.
@@ -42,7 +42,7 @@ async function createZip() {
   return new Promise((resolve, reject) => {
     output.on("close", () => {
       const sizeKb = (archive.pointer() / 1024).toFixed(1);
-      console.log(`✓ Created skippy.zip (${sizeKb} KB)`);
+      console.log(`✓ Created skippy-ff.zip (${sizeKb} KB)`);
       resolve();
     });
     archive.on("error", reject);

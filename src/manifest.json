@@ -8,36 +8,21 @@
     "48": "icon-48.png",
     "128": "icon-128.png"
   },
-  "permissions": [
-    "storage"
-  ],
+  "permissions": ["storage"],
   "options_page": "pages/options/options.html",
   "action": {
     "default_popup": "pages/options/options.html"
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://www.crunchyroll.com/*",
-        "https://beta.crunchyroll.com/*"
-      ],
-      "js": [
-        "helpers/storage.js",
-        "content/skippy-core.js",
-        "content/skippy-crunchyroll.js"
-      ],
+      "matches": ["https://www.crunchyroll.com/*", "https://beta.crunchyroll.com/*"],
+      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-crunchyroll.js"],
       "run_at": "document_idle",
       "all_frames": false
     },
     {
-      "matches": [
-        "https://www.disneyplus.com/*"
-      ],
-      "js": [
-        "helpers/storage.js",
-        "content/skippy-core.js",
-        "content/skippy-disneyplus.js"
-      ],
+      "matches": ["https://www.disneyplus.com/*"],
+      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-disneyplus.js"],
       "run_at": "document_idle",
       "all_frames": false
     }
