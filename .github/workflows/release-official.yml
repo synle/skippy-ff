@@ -1,0 +1,99 @@
+name: release-official
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "Optional release notes (prepended to auto-generated changelog)"
+        required: false
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - run: npm ci || npm install --no-fund --prefer-offline
+
+      # Bump version (repo-specific: skippy-ff bumps during CI)
+      - name: Bump version
+        run: npm version minor --no-git-tag-version
+
+      # Pre-build: resolve tag and create draft
+      - name: Resolve tag
+        id: tag
+        uses: synle/workflows/actions/release/_common/resolve-tag@main
+        with:
+          mode: official
+
+      - name: Create draft
+        uses: synle/workflows/actions/release/_common/draft@main
+        with:
+          tag: ${{ steps.tag.outputs.tag }}
+          project_name: Skippy
+
+      # Build (repo-specific)
+      - run: npm run package
+
+      # Commit version bump (repo-specific)
+      - name: Commit and push version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || (git commit -m "release: ${{ steps.tag.outputs.tag }}" && git pull --rebase && git push)
+
+      # Post-build: generate notes and finalize
+      - name: Generate release notes
+        uses: synle/workflows/actions/release/_common/notes@main
+        with:
+          tag: ${{ steps.tag.outputs.tag }}
+          project_name: Skippy
+          user_notes: ${{ github.event.inputs.notes }}
+
+      - name: Append install instructions
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "### Install"
+            echo ""
+            echo "**Mac / Linux:**"
+            echo '```bash'
+            echo "curl -L -o skippy-ff.zip https://github.com/${REPO}/releases/download/${TAG}/skippy-ff.zip && unzip skippy-ff.zip -d skippy-ff"
+            echo '```'
+            echo ""
+            echo "**Windows:**"
+            echo '```powershell'
+            echo "Invoke-WebRequest -Uri https://github.com/${REPO}/releases/download/${TAG}/skippy-ff.zip -OutFile skippy-ff.zip"
+            echo "Expand-Archive -Path skippy-ff.zip -DestinationPath skippy-ff"
+            echo '```'
+            echo ""
+            echo 'Then load the `skippy-ff` folder as an unpacked extension in Chrome (`chrome://extensions/` → Developer mode → Load unpacked).'
+          } >> release-notes.md
+
+      - name: Finalize release
+        uses: synle/workflows/actions/release/_common/finalize@main
+        with:
+          tag: ${{ steps.tag.outputs.tag }}
+          project_name: Skippy
+          mode: official
+          build_result: success
+          files: skippy-ff.zip
