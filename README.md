@@ -57,20 +57,21 @@ skippy-ff/
 
 ## Settings (defaults)
 
-| Flag           | Default | Description                     |
-| -------------- | ------- | ------------------------------- |
-| `skipIntro`    | `true`  | Click "Skip Intro" when shown   |
-| `skipRecap`    | `true`  | Click "Skip Recap" when shown   |
-| `skipCredits`  | `true`  | Click "Skip Credits" when shown |
-| `enabledSites` | all on  | Per-site enable toggle          |
+| Flag             | Default | Description                                                                  |
+| ---------------- | ------- | ---------------------------------------------------------------------------- |
+| `skipIntro`      | `true`  | Click "Skip Intro" when shown                                                |
+| `skipRecap`      | `true`  | Click "Skip Recap" when shown                                                |
+| `skipCredits`    | `true`  | Click "Skip Credits" / "Next Episode" when shown                             |
+| `verboseLogging` | `false` | Emit `[Skippy]` / `[Skippy/<site>]` diagnostics to DevTools                  |
+| `enabledSites`   | all on  | Per-site enable toggle (`crunchyroll.com`, `disneyplus.com`, `tv.apple.com`) |
 
 Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome profiles.
 
-## Adding a new streaming site
+## Documentation
 
-1. Create `src/content/skippy-<site>.js` exporting nothing — call `SkippyCore.skippyStart(adapter)` at the bottom. The adapter takes settings and returns a visible button to click (or `null`).
-2. Register the script in `src/manifest.json` under `content_scripts` with the appropriate `matches` host patterns. Include `helpers/storage.js` and `content/skippy-core.js` before the adapter.
-3. Add a checkbox row in `src/pages/options/options.html` with `data-site="<hostname>"`.
+- `ARCHITECTURE.md` — system map (components, data flow, build pipeline, CI/CD).
+- `DEV.md` — local development workflow, adding a new site, debugging guide.
+- `CLAUDE.md` — project rules.
 
 ## Roadmap
 
