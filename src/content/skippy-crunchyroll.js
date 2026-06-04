@@ -8,13 +8,19 @@ let lastSkipCreditsAt = 0;
 
 /**
  * Find a button by its aria-label. Crunchyroll uses aria-label="Skip Intro" etc.
- * The site keeps the button mounted with `opacity: 0` + `pointer-events: none` while
- * the player controls are faded out on mouse idle — the click handler is still wired
- * up, so a programmatic `.click()` works regardless. We try the strict visibility
- * gate first (fast path: user is moving the mouse, controls visible) and then fall
- * back to a permissive presence check (slow path: idle, button mounted but visually
- * hidden). Without the fallback Skippy would silently no-op for users who put the
- * cursor down and walk away.
+ *
+ * Strict visibility only — `skippyIsVisible` requires opacity ≥ 0.5 and
+ * `pointer-events ≠ "none"`. Crunchyroll keeps skip buttons mounted with
+ * `opacity: 0` while the player controls are faded out on mouse idle; the click
+ * handler is still wired, so a programmatic click would technically succeed.
+ * Going down that path is what we used to do, and it caused a UI strobe loop —
+ * every click was treated by the player as user interaction and faded the
+ * control overlay back in, where the next 500 ms poll would re-click the still-
+ * idle-faded button. Restricting clicks to genuinely-visible buttons means we
+ * only fire when the player has already surfaced the prompt for the user, which
+ * is exactly when a human would click anyway. Trade-off: an idle viewer doesn't
+ * get an auto-skip until they move the mouse; that's acceptable because the
+ * synthetic click was waking up the chrome regardless.
  * @param {string} label Exact aria-label value.
  * @returns {HTMLElement|null} Matching button or null.
  */
@@ -23,9 +29,6 @@ function findButtonByAriaLabel(label) {
   for (const node of nodes) {
     if (SkippyCore.skippyIsVisible(node)) return node;
   }
-  for (const node of nodes) {
-    if (SkippyCore.skippyIsPresent(node)) return node;
-  }
   return null;
 }
 
@@ -33,8 +36,12 @@ function findButtonByAriaLabel(label) {
  * Find the Crunchyroll "Next Episode" button rendered after credits roll. The button
  * carries a stable `data-testid="next-episode-button"` plus `aria-label="Next Episode"`;
  * we probe the testid first and fall back to the aria-label so the adapter survives
- * either attribute drifting. Same visible-then-present probe ladder as
- * `findButtonByAriaLabel` because Crunchyroll fades the player controls on idle.
+ * either attribute drifting.
+ *
+ * Strict visibility only — the up-next chrome surfaces this button at full opacity
+ * for the entire post-credits window, so the permissive `skippyIsPresent` fallback
+ * would just find it the moment Crunchyroll mounts the element and fire long before
+ * the chrome animates in.
  *
  * Caller is responsible for the `nextEpisode` flag and the post-credits delay gate —
  * this function just resolves the DOM candidate.
@@ -44,9 +51,6 @@ function findNextEpisodeButton() {
   const nodes = document.querySelectorAll('button[data-testid="next-episode-button"], button[aria-label="Next Episode"]');
   for (const node of nodes) {
     if (SkippyCore.skippyIsVisible(node)) return /** @type {HTMLElement} */ (node);
-  }
-  for (const node of nodes) {
-    if (SkippyCore.skippyIsPresent(node)) return /** @type {HTMLElement} */ (node);
   }
   return null;
 }
