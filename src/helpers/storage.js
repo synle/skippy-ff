@@ -1,7 +1,5 @@
 /** Skippy storage helpers. Wraps chrome.storage.sync with defaults. */
 
-/* global chrome */
-
 /** Default skip flags. All on by default. */
 const SKIPPY_DEFAULTS = {
   skipIntro: true,

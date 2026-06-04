@@ -1,5 +1,7 @@
 node_modules/
 dist/
+types/
+coverage/
 *.zip
 .DS_Store
 .vscode/

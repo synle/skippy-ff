@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "checkJs": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "types",
+    "rootDir": "src",
+    "allowJs": true,
+    "module": "es2020",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true
+  },
+  "include": ["src/helpers/storage.js"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

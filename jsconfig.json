@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "checkJs": false,
+    "module": "es2020",
+    "moduleResolution": "bundler",
+    "target": "es2020",
+    "baseUrl": ".",
+    "paths": {
+      "/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.js"],
+  "exclude": ["node_modules", "dist", "types"]
+}

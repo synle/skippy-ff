@@ -1,8 +1,10 @@
 /** Skippy options page controller. Binds checkboxes to chrome.storage.sync via SkippyStorage. */
 
-/* global SkippyStorage */
+import "../../helpers/storage.js";
 
 const FLAG_IDS = ["skipIntro", "skipRecap", "skipCredits"];
+
+let statusTimer = 0;
 
 /**
  * Show a transient status message in the footer.
@@ -10,10 +12,11 @@ const FLAG_IDS = ["skipIntro", "skipRecap", "skipCredits"];
  * @returns {void}
  */
 function showStatus(text) {
-  const el = document.getElementById("status");
+  const el = /** @type {HTMLElement | null} */ (document.getElementById("status"));
+  if (!el) return;
   el.textContent = text;
-  clearTimeout(showStatus._timer);
-  showStatus._timer = setTimeout(() => {
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => {
     el.textContent = "";
   }, 1200);
 }
@@ -27,7 +30,8 @@ async function init() {
 
   // Hydrate top-level skip flags.
   for (const id of FLAG_IDS) {
-    const input = document.getElementById(id);
+    const input = /** @type {HTMLInputElement | null} */ (document.getElementById(id));
+    if (!input) continue;
     input.checked = Boolean(settings[id]);
     input.addEventListener("change", async () => {
       await SkippyStorage.saveSkippySettings({ [id]: input.checked });
@@ -36,8 +40,10 @@ async function init() {
   }
 
   // Hydrate per-site toggles.
-  document.querySelectorAll("input[data-site]").forEach((input) => {
+  const siteInputs = /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll("input[data-site]"));
+  siteInputs.forEach((input) => {
     const site = input.dataset.site;
+    if (!site) return;
     input.checked = settings.enabledSites[site] !== false;
     input.addEventListener("change", async () => {
       const current = await SkippyStorage.getSkippySettings();

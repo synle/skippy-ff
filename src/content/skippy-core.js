@@ -1,7 +1,5 @@
 /** Skippy core. Site-agnostic helpers for detecting and clicking skip buttons. */
 
-/* global SkippyStorage */
-
 /**
  * Check if an element is visually present and clickable.
  * Streaming players hide skip buttons via opacity:0 + pointer-events:none rather than display:none.

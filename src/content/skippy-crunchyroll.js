@@ -1,7 +1,5 @@
 /** Skippy Crunchyroll adapter. Detects and clicks Skip Intro/Recap/Credits buttons. */
 
-/* global SkippyCore */
-
 /**
  * Find a button by its aria-label. Crunchyroll uses aria-label="Skip Intro" etc.
  * The site keeps the button mounted with opacity/pointer-events toggling, so a CSS
