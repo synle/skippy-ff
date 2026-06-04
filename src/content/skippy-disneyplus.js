@@ -32,7 +32,7 @@ function deepQueryAll(root, selector) {
   const queue = /** @type {(Document|ShadowRoot|Element)[]} */ ([root]);
   while (queue.length) {
     const node = queue.shift();
-    if (!node || typeof /** @type {any} */ (node).querySelectorAll !== "function") continue;
+    if (!node || typeof (/** @type {any} */ (node).querySelectorAll) !== "function") continue;
     for (const el of /** @type {any} */ (node).querySelectorAll(selector)) results.push(el);
     // Enqueue every descendant's shadow root for further traversal.
     for (const el of /** @type {any} */ (node).querySelectorAll("*")) {
