@@ -44,40 +44,78 @@ function skippyDLog(key, message, ...extras) {
 }
 
 /**
- * Check if an element is visually present and clickable.
- * Streaming players hide skip buttons via opacity:0 + pointer-events:none rather than display:none.
+ * Check if an element is visually present and clickable. Strict — used as the primary
+ * click gate by every site adapter.
+ *
+ * Checks are ordered fail-fast, strongest author-intent signal first, cheapest within
+ * a tier. Streaming players hide skip buttons in several different ways depending on
+ * the build (`aria-hidden="true"` on a wrapper, `inert` on the chrome container,
+ * `opacity:0 + pointer-events:none` during idle fade, transform-to-zero), so the gate
+ * needs to handle all of them or the adapter false-positives in subtle ways.
+ *
+ * Order:
+ *   1. `isConnected` — must be in the DOM at all (cheapest possible check).
+ *   2. `closest('[aria-hidden="true"]')` — author explicitly hid this for assistive tech;
+ *      covers self + every ancestor in one DOM walk because `aria-hidden` cascades semantically.
+ *   3. `closest('[inert]')` — author explicitly marked this subtree non-interactive; browsers
+ *      actively block focus + click on `inert`, so this is a hard "not visible" signal.
+ *   4. computed `display !== "none"` (self) — ancestor `display:none` collapses the rect to
+ *      0×0, which step 6 catches, so a self-check is enough here.
+ *   5. computed `visibility !== "hidden"` (self) — `visibility` inherits via the CSS cascade,
+ *      so `getComputedStyle(self)` already reflects ancestor state. A descendant overriding
+ *      with `visibility: visible` correctly counts as visible.
+ *   6. `getBoundingClientRect()` > 0×0 — catches anything the above missed: ancestor
+ *      `display:none`, `transform: scale(0)`, `clip-path`, zero-height container.
+ *   7. `parseFloat(opacity) > 0` — anything not fully transparent counts. Threshold is
+ *      strictly > 0 (not ≥ 0.5) so a button mid-fade-in is treated as visible the moment
+ *      it's painting any pixels, matching "if you can see it, it counts".
+ *   8. `pointer-events !== "none"` — weakest signal because programmatic `.click()` still
+ *      works on `pointer-events: none`. Kept as a tie-breaker so the Crunchyroll
+ *      idle-faded combo (`opacity:0 + pointer-events:none`) is fully fenced off even if
+ *      a future build animates one of the two independently.
  * @param {Element} el Candidate element.
- * @returns {boolean} True when the element occupies space and accepts pointer events.
+ * @returns {boolean} True when the element passes all eight gates.
  */
 function skippyIsVisible(el) {
   if (!el || !(el instanceof Element)) return false;
+  if (!el.isConnected) return false;
+  if (el.closest('[aria-hidden="true"]')) return false;
+  if (el.closest("[inert]")) return false;
+  const style = window.getComputedStyle(el);
+  if (style.display === "none") return false;
+  if (style.visibility === "hidden") return false;
   const rect = el.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return false;
-  const style = window.getComputedStyle(el);
-  if (style.visibility === "hidden" || style.display === "none") return false;
-  if (parseFloat(style.opacity) < 0.5) return false;
+  if (parseFloat(style.opacity) <= 0) return false;
   if (style.pointerEvents === "none") return false;
   return true;
 }
 
 /**
- * Permissive presence check — true when the element is attached to the document,
- * occupies layout space, and isn't `display:none` / `visibility:hidden`. Unlike
- * `skippyIsVisible`, this does NOT gate on `opacity` or `pointer-events`, because
- * some players (e.g. Crunchyroll) toggle those off while the player controls fade
- * out on mouse idle even though the underlying click handler is still wired up
- * and would respond to a programmatic `.click()`. Use this when a site keeps the
- * skip button mounted full-time and only animates its chrome.
+ * Permissive presence check — true when the element passes the "hard hidden" gates but
+ * is allowed to be visually faded or non-interactive. Use this when a site keeps the
+ * skip button mounted full-time and only animates its chrome (e.g. Apple TV's player),
+ * where the underlying click handler is still wired up and would respond to a
+ * programmatic `.click()` regardless of opacity.
+ *
+ * Matches `skippyIsVisible` steps 1–6 exactly. The opacity + pointer-events gates
+ * (steps 7–8) are dropped because those are the very signals a fading-chrome site
+ * toggles while keeping the handler wired. Author-intent gates (`aria-hidden`,
+ * `inert`) stay on — a button the author marked semantically hidden is hidden
+ * regardless of whether it's painting pixels.
  * @param {Element} el Candidate element.
- * @returns {boolean} True when the element is in the DOM with non-zero layout box.
+ * @returns {boolean} True when the element is in the DOM with non-zero layout box and not author-hidden.
  */
 function skippyIsPresent(el) {
   if (!el || !(el instanceof Element)) return false;
   if (!el.isConnected) return false;
+  if (el.closest('[aria-hidden="true"]')) return false;
+  if (el.closest("[inert]")) return false;
+  const style = window.getComputedStyle(el);
+  if (style.display === "none") return false;
+  if (style.visibility === "hidden") return false;
   const rect = el.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return false;
-  const style = window.getComputedStyle(el);
-  if (style.visibility === "hidden" || style.display === "none") return false;
   return true;
 }
 

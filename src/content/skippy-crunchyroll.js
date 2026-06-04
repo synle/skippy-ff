@@ -1,6 +1,20 @@
 /** Skippy Crunchyroll adapter. Detects and clicks Skip Intro/Recap/Credits buttons and the Next Episode button. */
 
 /**
+ * Throttled adapter-scoped debug logger — wraps `SkippyCore.skippyDLog` with a site prefix
+ * and dedupe key namespace. Silent unless `settings.verboseLogging` is on. Same shape as
+ * the helper in `skippy-disneyplus.js` / `skippy-appletv.js` so the console-filter UX is
+ * consistent across adapters (`[Skippy/Crunchyroll]` → grep).
+ * @param {string} key Stable identifier for the log line (e.g. "scan").
+ * @param {string} message Text to log; suppressed when equal to the previous message for this key.
+ * @param {...unknown} extras Additional values to log alongside.
+ * @returns {void}
+ */
+function dlog(key, message, ...extras) {
+  SkippyCore.skippyDLog(`crunchyroll:${key}`, `[Skippy/Crunchyroll] ${message}`, ...extras);
+}
+
+/**
  * Find a button by its aria-label. Crunchyroll uses aria-label="Skip Intro" etc.
  *
  * Strict visibility only — `skippyIsVisible` requires opacity ≥ 0.5 and
@@ -24,6 +38,30 @@ function findButtonByAriaLabel(label) {
     if (SkippyCore.skippyIsVisible(node)) return node;
   }
   return null;
+}
+
+/**
+ * Probe a button by aria-label and report its full state — present / visible / rect /
+ * computed opacity / pointer-events. Used by the per-tick scan log and the `__skippy()`
+ * inspector to make it obvious why a button did or didn't get picked. Returns the same
+ * shape regardless of whether any candidate was found, so callers can dump it directly.
+ * @param {string} label Exact aria-label value to probe.
+ * @returns {{label: string, count: number, visible: boolean, present: boolean, rect: DOMRect|null, opacity: string|null, pointerEvents: string|null}} Snapshot.
+ */
+function probeByAriaLabel(label) {
+  const nodes = document.querySelectorAll(`button[aria-label="${label}"]`);
+  const first = nodes[0] || null;
+  if (!first) return { label, count: 0, visible: false, present: false, rect: null, opacity: null, pointerEvents: null };
+  const style = window.getComputedStyle(first);
+  return {
+    label,
+    count: nodes.length,
+    visible: SkippyCore.skippyIsVisible(first),
+    present: SkippyCore.skippyIsPresent(first),
+    rect: first.getBoundingClientRect(),
+    opacity: style.opacity,
+    pointerEvents: style.pointerEvents,
+  };
 }
 
 /**
@@ -66,31 +104,106 @@ function findNextEpisodeButton() {
  * is mounted full-time, so any time- or visibility-based gate on it alone false-positives
  * mid-episode. Anchoring on Skip Credits visibility removes the false positives without
  * any timing state.
+ *
+ * Verbose logging emits a per-tick scan trace (dedup'd by `skippyDLog`) and a per-return
+ * decision trace so you can grep the console for `[Skippy/Crunchyroll]` and see exactly
+ * which branch fired and what the visibility state of each candidate was at the time.
  * @param {object} settings Current Skippy settings.
  * @returns {HTMLElement|null}
  */
 function findCrunchyrollSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["crunchyroll.com"] === false) return null;
+  if (settings.enabledSites && settings.enabledSites["crunchyroll.com"] === false) {
+    dlog("disabled", "disabled for crunchyroll.com via settings");
+    return null;
+  }
 
-  if (settings.skipIntro) {
+  const skipIntro = probeByAriaLabel("Skip Intro");
+  const skipRecap = probeByAriaLabel("Skip Recap");
+  const skipCredits = probeByAriaLabel("Skip Credits");
+  const nextEpisodeBtn = findNextEpisodeButton();
+
+  // Throttled scan trace — repeats are dedup'd by skippyDLog so an idle player produces
+  // one line per state change, not 2/sec of noise.
+  dlog(
+    "scan",
+    `scan: intro(count=${skipIntro.count} visible=${skipIntro.visible}), ` +
+      `recap(count=${skipRecap.count} visible=${skipRecap.visible}), ` +
+      `credits(count=${skipCredits.count} visible=${skipCredits.visible}), ` +
+      `nextEpisodeMounted=${!!nextEpisodeBtn}`,
+  );
+
+  if (settings.skipIntro && skipIntro.visible) {
     const btn = findButtonByAriaLabel("Skip Intro");
-    if (btn) return btn;
+    if (btn) {
+      dlog("decide-intro", "→ return Skip Intro");
+      return btn;
+    }
   }
-  if (settings.skipRecap) {
+  if (settings.skipRecap && skipRecap.visible) {
     const btn = findButtonByAriaLabel("Skip Recap");
-    if (btn) return btn;
+    if (btn) {
+      dlog("decide-recap", "→ return Skip Recap");
+      return btn;
+    }
   }
 
-  // End-of-episode dispatch — see function docstring for the trigger model.
-  const skipCreditsBtn = findButtonByAriaLabel("Skip Credits");
-  if (skipCreditsBtn) {
+  // End-of-episode dispatch — Skip Credits visibility is the trigger.
+  if (skipCredits.visible) {
+    const skipCreditsBtn = findButtonByAriaLabel("Skip Credits");
     if (settings.nextEpisode) {
-      const nextBtn = findNextEpisodeButton();
-      if (nextBtn) return nextBtn;
+      if (nextEpisodeBtn) {
+        dlog("decide-next", "→ return Next Episode (skipCredits visible + nextEpisode flag on)");
+        return nextEpisodeBtn;
+      }
+      dlog("decide-next-miss", "skipCredits visible + nextEpisode flag on, but Next Episode button not found in DOM");
     }
-    if (settings.skipCredits) return skipCreditsBtn;
+    if (settings.skipCredits && skipCreditsBtn) {
+      dlog("decide-credits", "→ return Skip Credits (nextEpisode disabled or Next Episode button missing)");
+      return skipCreditsBtn;
+    }
+    dlog("decide-credits-noop", "skipCredits visible but both nextEpisode + skipCredits flags off → no-op");
+    return null;
+  }
+
+  // Optional: surface a one-time hint when Next Episode is in DOM but Skip Credits is
+  // NOT visible. Pre-fix code would have clicked Next Episode here; we deliberately
+  // don't. Logging it makes the new gate observable while debugging.
+  if (nextEpisodeBtn) {
+    dlog("guard-next", "Next Episode mounted but Skip Credits not visible → no click (mid-episode false-positive guard)");
   }
   return null;
 }
+
+SkippyCore.skippyLog("[Skippy/Crunchyroll] adapter loaded on", location.href);
+
+/**
+ * Live inspector — paste `__skippy()` in DevTools to dump the adapter's current view of
+ * the page. Shows the visibility / opacity / pointer-events of each skip button and
+ * whether the Next Episode button is mounted. Useful for "why didn't Skippy skip?" or
+ * "why did Skippy click Next Episode?" — the snapshot tells you which branch of
+ * `findCrunchyrollSkipButton` would have been taken at the moment you ran it. Emits
+ * regardless of the verbose-logging setting; this is a manual probe.
+ * @returns {object} Snapshot of current adapter state.
+ */
+globalThis.__skippy = function __skippy() {
+  const nextBtn = findNextEpisodeButton();
+  const snapshot = {
+    href: location.href,
+    skipIntro: probeByAriaLabel("Skip Intro"),
+    skipRecap: probeByAriaLabel("Skip Recap"),
+    skipCredits: probeByAriaLabel("Skip Credits"),
+    nextEpisode: nextBtn
+      ? {
+          present: SkippyCore.skippyIsPresent(nextBtn),
+          visible: SkippyCore.skippyIsVisible(nextBtn),
+          rect: nextBtn.getBoundingClientRect(),
+          ariaLabel: nextBtn.getAttribute("aria-label"),
+          testid: nextBtn.getAttribute("data-testid"),
+        }
+      : null,
+  };
+  console.log("[Skippy/Crunchyroll] snapshot", snapshot);
+  return snapshot;
+};
 
 SkippyCore.skippyStart(findCrunchyrollSkipButton);

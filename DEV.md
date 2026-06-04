@@ -89,7 +89,7 @@ Walk this list:
 1. **Is the adapter loaded?** Search Console for `[Skippy/<site>] adapter loaded`. Missing → the page is on a host the `matches` pattern doesn't cover. Check `src/manifest.json`.
 2. **Did the poll loop start?** Search for `[Skippy] polling started`. Missing → storage helper failed to load. Inspect `helpers/storage.js`.
 3. **Are scan candidates found?** With verbose on, look at the adapter's `scan: …` line. `0` means selectors don't match — DOM has drifted, update the adapter.
-4. **Is the candidate considered visible?** Adapter logs `visible=true/false`. If `false`, the site is fading controls; the permissive `skippyIsPresent` fallback should kick in. Check that the adapter is using it.
+4. **Is the candidate considered visible?** Adapter logs `visible=true/false`. If `false`, walk the eight-gate ladder in `skippy-core.js` (`skippyIsVisible`) — typical culprits are an ancestor with `aria-hidden="true"` or `inert`, `opacity:0` idle-fade, or a zero-rect from `transform: scale(0)` / `clip-path`. Paste the standalone probe snippet from the Console (see `__skippy()` in each adapter, or any of the `probeByAriaLabel` patterns) to see which specific gate is failing. The permissive `skippyIsPresent` fallback drops the opacity + pointer-events gates but still rejects aria-hidden / inert — author-intent signals never get bypassed.
 5. **Click fires but nothing happens?** Watch for `[Skippy] click via …` lines. Multi-strategy click should land on the real handler; if not, the button may be inside a closed shadow root — manual `__skippy()` inspection will confirm.
 
 ### Manually triggering events
