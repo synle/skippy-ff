@@ -43,7 +43,8 @@ Single source of truth for settings. Wraps `chrome.storage.sync` with a defaults
 | ---------------- | ---------------------- | ------- | -------------------------------------------------------------------------------------------------------- |
 | `skipIntro`      | `boolean`              | `true`  | Click "Skip Intro" / equivalent when visible                                                             |
 | `skipRecap`      | `boolean`              | `true`  | Click "Skip Recap" / equivalent when visible                                                             |
-| `skipCredits`    | `boolean`              | `true`  | Click "Skip Credits" / "Next Episode" / equivalent when visible                                          |
+| `skipCredits`    | `boolean`              | `true`  | Click "Skip Credits" / equivalent when visible                                                           |
+| `nextEpisode`    | `boolean`              | `true`  | Click "Next Episode" / "Play Next Episode" at end-of-episode chrome (separate step from `skipCredits`)   |
 | `verboseLogging` | `boolean`              | `false` | When on, content scripts emit diagnostic logs to the DevTools console                                    |
 | `pollIntervalMs` | `number`               | `500`   | Page-scan cadence in ms; clamped to `[SKIPPY_POLL_MIN_MS=100, SKIPPY_POLL_MAX_MS=5000]` at save and read |
 | `enabledSites`   | `Record<string, bool>` | all on  | Per-site enable toggle keyed by site hostname                                                            |

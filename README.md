@@ -69,7 +69,8 @@ The popup (also reachable via `chrome://extensions/` → Skippy → Details → 
 | ---------------- | ------- | ---------------------------------------------------------------------------- |
 | `skipIntro`      | `true`  | Click "Skip Intro" when shown                                                |
 | `skipRecap`      | `true`  | Click "Skip Recap" when shown                                                |
-| `skipCredits`    | `true`  | Click "Skip Credits" / "Next Episode" when shown                             |
+| `skipCredits`    | `true`  | Click "Skip Credits" when shown                                              |
+| `nextEpisode`    | `true`  | Click the post-credits "Next Episode" / "Play Next Episode" button           |
 | `verboseLogging` | `false` | Emit `[Skippy]` / `[Skippy/<site>]` diagnostics to DevTools                  |
 | `pollIntervalMs` | `500`   | Page-scan cadence; clamped to 100–5000 ms                                    |
 | `enabledSites`   | all on  | Per-site enable toggle (`crunchyroll.com`, `disneyplus.com`, `tv.apple.com`) |
@@ -86,5 +87,4 @@ Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome pr
 
 - Netflix adapter (`Skip Intro`, `Skip Recap`, `Next Episode`)
 - Hulu adapter
-- Toggle for auto-clicking "Next Episode"
 - Per-site skip-flag overrides

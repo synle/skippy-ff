@@ -56,6 +56,18 @@ describe("SkippyStorage", () => {
     expect(settings.verboseLogging).toBe(false);
   });
 
+  it("defaults nextEpisode to true so end-of-episode autoplay clicks continue working", async () => {
+    const settings = await getSkippySettings();
+    expect(settings.nextEpisode).toBe(true);
+  });
+
+  it("persists nextEpisode independently of skipCredits", async () => {
+    await saveSkippySettings({ nextEpisode: false });
+    const settings = await getSkippySettings();
+    expect(settings.nextEpisode).toBe(false);
+    expect(settings.skipCredits).toBe(true);
+  });
+
   it("defaults pollIntervalMs to 500", async () => {
     const settings = await getSkippySettings();
     expect(settings.pollIntervalMs).toBe(500);

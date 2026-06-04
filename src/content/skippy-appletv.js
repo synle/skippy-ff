@@ -87,13 +87,13 @@ function findAppleTvSkipOverlayButton(settings) {
  * Find the Apple TV "Play Next Episode" button rendered at the end of an episode.
  * Identified by the stable `data-testid="countdown-play-icon"` on the inner icon —
  * its enclosing `<button>` is the click target. Also accepts a text fallback for builds
- * where the testid drifts. Tied to `skipCredits` since this button advances the viewer
- * past end-of-episode chrome.
- * @param {{skipCredits: boolean}} settings Current Skippy settings.
+ * where the testid drifts. Gated on the standalone `nextEpisode` flag (separate from
+ * `skipCredits`) so users can toggle the post-credits autoplay independently.
+ * @param {{nextEpisode: boolean}} settings Current Skippy settings.
  * @returns {HTMLElement|null} The Play Next Episode button, or null when hidden / disabled.
  */
 function findAppleTvNextEpisodeButton(settings) {
-  if (!settings.skipCredits) return null;
+  if (!settings.nextEpisode) return null;
   const icons = deepQueryAll(document, '[data-testid="countdown-play-icon"]');
   const candidates = /** @type {HTMLButtonElement[]} */ ([]);
   for (const icon of icons) {

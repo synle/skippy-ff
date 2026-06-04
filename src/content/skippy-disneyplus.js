@@ -90,13 +90,14 @@ function findDisneyPlusSkipOverlayButton(settings) {
 
 /**
  * Find the Disney+ "Next Episode" button rendered by the up-next-lite overlay near credits.
- * Tied to `skipCredits` since both advance the viewer past end-of-episode chrome. Searches
+ * Gated on the standalone `nextEpisode` flag (separate from `skipCredits`) — users may
+ * want credits to skip but the post-credits screen to sit, or vice versa. Searches
  * deep through shadow roots, same reason as `findDisneyPlusSkipOverlayButton`.
- * @param {{skipCredits: boolean}} settings Current Skippy settings.
+ * @param {{nextEpisode: boolean}} settings Current Skippy settings.
  * @returns {HTMLElement|null} The next-episode button, or null when hidden / disabled.
  */
 function findDisneyPlusNextEpisodeButton(settings) {
-  if (!settings.skipCredits) return null;
+  if (!settings.nextEpisode) return null;
   const matches = deepQueryAll(document, "button.up-next-lite-v1-overlay__button");
   if (matches.length === 0) return null;
   for (const btn of matches) {

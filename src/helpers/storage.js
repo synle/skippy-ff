@@ -11,6 +11,8 @@ const SKIPPY_DEFAULTS = {
   skipIntro: true,
   skipRecap: true,
   skipCredits: true,
+  /** When true, content scripts click the "Next Episode" / "Play Next Episode" button at end-of-episode chrome (separate step from Skip Credits). Default on so existing behavior — clicking the up-next button on Disney+ / Apple TV / Crunchyroll — is preserved for users who upgrade past v0.9.x. Toggle off to let the post-credits screen sit. */
+  nextEpisode: true,
   /** When true, content scripts emit `[Skippy]` / `[Skippy/<site>]` console logs. Off by default to keep the DevTools console quiet for normal users; toggle on in the options page to debug a misbehaving adapter. */
   verboseLogging: false,
   /** Polling interval in milliseconds. Clamped to `[SKIPPY_POLL_MIN_MS, SKIPPY_POLL_MAX_MS]` at save time and again at read time as a defensive fallback. 500 ms keeps skip-button latency under half a second on a fresh install. */

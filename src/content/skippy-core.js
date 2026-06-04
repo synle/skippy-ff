@@ -173,15 +173,25 @@ function skippyClick(el) {
  * a `setTimeout` re-arm pattern (not `setInterval`) so a change to `settings.pollIntervalMs`
  * takes effect on the very next tick without a restart. Per-element cooldown prevents
  * repeated clicks on the same button while the site is slow to update DOM.
+ *
+ * After any successful click the loop sleeps for `postClickPauseMs` (default 5000 ms)
+ * before the next tick. Streaming players (notably Crunchyroll) treat the synthesized
+ * `mousedown`/`mouseup` events from `skippyClick` as user interaction and fade the
+ * control overlay in for a few seconds. Without the pause the very next 500 ms poll
+ * would re-fire and re-trigger the overlay even when the skip button has already gone
+ * away — UI strobes for as long as the post-click chrome animates. The pause lets the
+ * player settle before we look again.
  * @param {(settings: object) => HTMLElement|null} findSkipButton Site adapter callback.
  * @param {object} [options] Options.
  * @param {number} [options.intervalMs] Fallback polling interval in ms when settings haven't loaded yet.
  * @param {number} [options.cooldownMs] Per-element cooldown in ms after a click.
+ * @param {number} [options.postClickPauseMs] Minimum delay before the next tick after a click fires.
  * @returns {void}
  */
 function skippyStart(findSkipButton, options = {}) {
   const fallbackIntervalMs = options.intervalMs ?? SkippyStorage.SKIPPY_DEFAULTS.pollIntervalMs ?? 500;
   const cooldownMs = options.cooldownMs ?? 2000;
+  const postClickPauseMs = options.postClickPauseMs ?? 5000;
   const lastClickedAt = new WeakMap();
 
   let settings = null;
@@ -200,10 +210,13 @@ function skippyStart(findSkipButton, options = {}) {
    * One iteration of the poll loop. Reads the current `pollIntervalMs` from settings
    * (clamped via `SkippyStorage.clampPollIntervalMs` as a defensive fallback) and re-arms
    * itself. Runs the adapter, gates clicks by cooldown, logs the click unconditionally.
+   * When a click fires this tick, the next re-arm waits at least `postClickPauseMs` so
+   * the player's post-click overlay animation can settle without us re-triggering it.
    * @returns {void}
    */
   function tick() {
     let intervalMs = fallbackIntervalMs;
+    let clicked = false;
     try {
       if (settings) {
         intervalMs = SkippyStorage.clampPollIntervalMs(settings.pollIntervalMs ?? fallbackIntervalMs);
@@ -218,15 +231,17 @@ function skippyStart(findSkipButton, options = {}) {
             // the full verbose stream.
             console.log("[Skippy] clicking", label || "(no label)", button);
             skippyClick(button);
+            clicked = true;
           }
         }
       }
     } finally {
-      setTimeout(tick, intervalMs);
+      const nextDelayMs = clicked ? Math.max(intervalMs, postClickPauseMs) : intervalMs;
+      setTimeout(tick, nextDelayMs);
     }
   }
 
-  skippyLog("[Skippy] polling started", { host: location.host, fallbackIntervalMs, cooldownMs });
+  skippyLog("[Skippy] polling started", { host: location.host, fallbackIntervalMs, cooldownMs, postClickPauseMs });
   setTimeout(tick, fallbackIntervalMs);
 }
 
