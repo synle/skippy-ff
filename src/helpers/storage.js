@@ -7,6 +7,7 @@ const SKIPPY_DEFAULTS = {
   skipCredits: true,
   enabledSites: {
     "crunchyroll.com": true,
+    "disneyplus.com": true,
   },
 };
 
