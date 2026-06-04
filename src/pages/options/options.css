@@ -82,6 +82,30 @@ section h2 {
   cursor: pointer;
 }
 
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background: var(--card);
+  font-size: 14px;
+}
+
+.field input[type="number"] {
+  width: 96px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 14px;
+  text-align: right;
+}
+
 .muted {
   color: var(--muted);
   font-size: 12px;

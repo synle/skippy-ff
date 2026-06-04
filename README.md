@@ -63,6 +63,7 @@ skippy-ff/
 | `skipRecap`      | `true`  | Click "Skip Recap" when shown                                                |
 | `skipCredits`    | `true`  | Click "Skip Credits" / "Next Episode" when shown                             |
 | `verboseLogging` | `false` | Emit `[Skippy]` / `[Skippy/<site>]` diagnostics to DevTools                  |
+| `pollIntervalMs` | `500`   | Page-scan cadence; clamped to 100–5000 ms                                    |
 | `enabledSites`   | all on  | Per-site enable toggle (`crunchyroll.com`, `disneyplus.com`, `tv.apple.com`) |
 
 Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome profiles.

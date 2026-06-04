@@ -39,13 +39,14 @@ Single source of truth for settings. Wraps `chrome.storage.sync` with a defaults
 
 **Settings shape** (`SKIPPY_DEFAULTS`):
 
-| Key              | Type                   | Default | Purpose                                                               |
-| ---------------- | ---------------------- | ------- | --------------------------------------------------------------------- |
-| `skipIntro`      | `boolean`              | `true`  | Click "Skip Intro" / equivalent when visible                          |
-| `skipRecap`      | `boolean`              | `true`  | Click "Skip Recap" / equivalent when visible                          |
-| `skipCredits`    | `boolean`              | `true`  | Click "Skip Credits" / "Next Episode" / equivalent when visible       |
-| `verboseLogging` | `boolean`              | `false` | When on, content scripts emit diagnostic logs to the DevTools console |
-| `enabledSites`   | `Record<string, bool>` | all on  | Per-site enable toggle keyed by site hostname                         |
+| Key              | Type                   | Default | Purpose                                                                                                  |
+| ---------------- | ---------------------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| `skipIntro`      | `boolean`              | `true`  | Click "Skip Intro" / equivalent when visible                                                             |
+| `skipRecap`      | `boolean`              | `true`  | Click "Skip Recap" / equivalent when visible                                                             |
+| `skipCredits`    | `boolean`              | `true`  | Click "Skip Credits" / "Next Episode" / equivalent when visible                                          |
+| `verboseLogging` | `boolean`              | `false` | When on, content scripts emit diagnostic logs to the DevTools console                                    |
+| `pollIntervalMs` | `number`               | `500`   | Page-scan cadence in ms; clamped to `[SKIPPY_POLL_MIN_MS=100, SKIPPY_POLL_MAX_MS=5000]` at save and read |
+| `enabledSites`   | `Record<string, bool>` | all on  | Per-site enable toggle keyed by site hostname                                                            |
 
 ### `src/content/skippy-core.js`
 
@@ -53,7 +54,7 @@ Site-agnostic primitives. **Classic script** (MV3 content scripts can't be ES mo
 
 - **Visibility gating** — `skippyIsVisible` (strict: rect > 0, opacity ≥ 0.5, pointer-events ≠ "none") and `skippyIsPresent` (permissive: rect > 0, not display:none / visibility:hidden — used when a site fades skip buttons while keeping their click handler wired).
 - **Click dispatch** — `skippyClick` handles four cases: direct click target (`<button>`, `<a>`, `[role="button"]`), open shadow root with inner button, hit-test fallback via `document.elementFromPoint`, and a last-resort composed MouseEvent. Composed events are required so listeners inside enclosing shadow roots fire.
-- **Polling loop** — `skippyStart(adapter, options?)` runs the adapter every `intervalMs` (default 500). Each click has a per-element cooldown (default 2000 ms) so a still-mounted button isn't re-clicked while the site advances. Settings are loaded once + re-loaded on `chrome.storage.onChanged`.
+- **Polling loop** — `skippyStart(adapter, options?)` uses a `setTimeout` re-arm pattern so it can read `settings.pollIntervalMs` on every tick — a slider change in the options page takes effect on the next iteration without a restart. The interval is clamped via `SkippyStorage.clampPollIntervalMs` as a defensive fallback. Each click has a per-element cooldown (default 2000 ms) so a still-mounted button isn't re-clicked while the site advances. Settings are loaded once + re-loaded on `chrome.storage.onChanged`.
 - **Verbose logging** — `skippyLog` and `skippyDLog` (throttled) gate all diagnostic output behind `settings.verboseLogging`. The single "[Skippy] clicking …" line is exempt so users can confirm a skip fired without enabling the full verbose stream.
 
 ### `src/content/skippy-<site>.js` — site adapters

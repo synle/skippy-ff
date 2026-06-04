@@ -1,5 +1,11 @@
 /** Skippy storage helpers. Wraps chrome.storage.sync with defaults. */
 
+/** Lower bound for `pollIntervalMs`. Below this the polling loop wastes CPU without buying responsiveness — the per-element cooldown is 2000 ms, so sub-100 ms ticks just thrash. */
+const SKIPPY_POLL_MIN_MS = 100;
+
+/** Upper bound for `pollIntervalMs`. 5000 ms is the user-facing ceiling — anything slower and skip buttons would visibly linger before Skippy fires. */
+const SKIPPY_POLL_MAX_MS = 5000;
+
 /** Default skip flags. All on by default; verbose logging off by default (opt-in for testing). */
 const SKIPPY_DEFAULTS = {
   skipIntro: true,
@@ -7,12 +13,26 @@ const SKIPPY_DEFAULTS = {
   skipCredits: true,
   /** When true, content scripts emit `[Skippy]` / `[Skippy/<site>]` console logs. Off by default to keep the DevTools console quiet for normal users; toggle on in the options page to debug a misbehaving adapter. */
   verboseLogging: false,
+  /** Polling interval in milliseconds. Clamped to `[SKIPPY_POLL_MIN_MS, SKIPPY_POLL_MAX_MS]` at save time and again at read time as a defensive fallback. 500 ms keeps skip-button latency under half a second on a fresh install. */
+  pollIntervalMs: 500,
   enabledSites: {
     "crunchyroll.com": true,
     "disneyplus.com": true,
     "tv.apple.com": true,
   },
 };
+
+/**
+ * Clamp a candidate polling interval to the allowed range. Non-numeric or NaN input
+ * collapses to the default so storage never holds an unusable value.
+ * @param {unknown} value Candidate interval in milliseconds.
+ * @returns {number} A safe integer inside `[SKIPPY_POLL_MIN_MS, SKIPPY_POLL_MAX_MS]`.
+ */
+function clampPollIntervalMs(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return SKIPPY_DEFAULTS.pollIntervalMs;
+  return Math.max(SKIPPY_POLL_MIN_MS, Math.min(SKIPPY_POLL_MAX_MS, Math.round(n)));
+}
 
 /** Storage key for all Skippy settings. */
 const SKIPPY_STORAGE_KEY = "skippySettings";
@@ -42,6 +62,11 @@ async function getSkippySettings() {
 async function saveSkippySettings(patch) {
   const current = await getSkippySettings();
   const next = { ...current, ...patch };
+  // Validate `pollIntervalMs` at the trust boundary so storage can never hold a value
+  // outside the supported range, even if the options page is bypassed.
+  if (patch && Object.prototype.hasOwnProperty.call(patch, "pollIntervalMs")) {
+    next.pollIntervalMs = clampPollIntervalMs(patch.pollIntervalMs);
+  }
   await chrome.storage.sync.set({ [SKIPPY_STORAGE_KEY]: next });
 }
 
@@ -62,5 +87,8 @@ globalThis.SkippyStorage = {
   getSkippySettings,
   saveSkippySettings,
   onSkippySettingsChanged,
+  clampPollIntervalMs,
   SKIPPY_DEFAULTS,
+  SKIPPY_POLL_MIN_MS,
+  SKIPPY_POLL_MAX_MS,
 };

@@ -8,7 +8,15 @@ vi.stubGlobal("chrome", chrome);
 // Importing for side effect — storage.js attaches helpers to globalThis.
 await import("../src/helpers/storage.js");
 
-const { getSkippySettings, saveSkippySettings, onSkippySettingsChanged, SKIPPY_DEFAULTS } = globalThis.SkippyStorage;
+const {
+  getSkippySettings,
+  saveSkippySettings,
+  onSkippySettingsChanged,
+  clampPollIntervalMs,
+  SKIPPY_DEFAULTS,
+  SKIPPY_POLL_MIN_MS,
+  SKIPPY_POLL_MAX_MS,
+} = globalThis.SkippyStorage;
 
 describe("SkippyStorage", () => {
   beforeEach(() => {
@@ -46,6 +54,35 @@ describe("SkippyStorage", () => {
   it("defaults verboseLogging to false (opt-in)", async () => {
     const settings = await getSkippySettings();
     expect(settings.verboseLogging).toBe(false);
+  });
+
+  it("defaults pollIntervalMs to 500", async () => {
+    const settings = await getSkippySettings();
+    expect(settings.pollIntervalMs).toBe(500);
+  });
+
+  it("clamps pollIntervalMs above the ceiling on save", async () => {
+    await saveSkippySettings({ pollIntervalMs: 999_999 });
+    const settings = await getSkippySettings();
+    expect(settings.pollIntervalMs).toBe(SKIPPY_POLL_MAX_MS);
+  });
+
+  it("clamps pollIntervalMs below the floor on save", async () => {
+    await saveSkippySettings({ pollIntervalMs: 0 });
+    const settings = await getSkippySettings();
+    expect(settings.pollIntervalMs).toBe(SKIPPY_POLL_MIN_MS);
+  });
+
+  it("coerces a non-numeric pollIntervalMs back to the default", async () => {
+    await saveSkippySettings({ pollIntervalMs: "not a number" });
+    const settings = await getSkippySettings();
+    expect(settings.pollIntervalMs).toBe(SKIPPY_DEFAULTS.pollIntervalMs);
+  });
+
+  it("clampPollIntervalMs handles numeric strings", () => {
+    expect(clampPollIntervalMs("750")).toBe(750);
+    expect(clampPollIntervalMs("60")).toBe(SKIPPY_POLL_MIN_MS);
+    expect(clampPollIntervalMs("999999")).toBe(SKIPPY_POLL_MAX_MS);
   });
 
   it("notifies subscribers when settings change", async () => {

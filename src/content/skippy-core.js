@@ -169,16 +169,18 @@ function skippyClick(el) {
 
 /**
  * Start a polling loop that asks the site adapter for the next button to click.
- * Adapter returns the element to click (or null) given current settings.
- * Cooldown prevents repeated clicks on the same button if the site is slow to update DOM.
+ * Adapter returns the element to click (or null) given current settings. The loop uses
+ * a `setTimeout` re-arm pattern (not `setInterval`) so a change to `settings.pollIntervalMs`
+ * takes effect on the very next tick without a restart. Per-element cooldown prevents
+ * repeated clicks on the same button while the site is slow to update DOM.
  * @param {(settings: object) => HTMLElement|null} findSkipButton Site adapter callback.
  * @param {object} [options] Options.
- * @param {number} [options.intervalMs] Polling interval in ms.
+ * @param {number} [options.intervalMs] Fallback polling interval in ms when settings haven't loaded yet.
  * @param {number} [options.cooldownMs] Per-element cooldown in ms after a click.
  * @returns {void}
  */
 function skippyStart(findSkipButton, options = {}) {
-  const intervalMs = options.intervalMs ?? 500;
+  const fallbackIntervalMs = options.intervalMs ?? SkippyStorage.SKIPPY_DEFAULTS.pollIntervalMs ?? 500;
   const cooldownMs = options.cooldownMs ?? 2000;
   const lastClickedAt = new WeakMap();
 
@@ -194,21 +196,38 @@ function skippyStart(findSkipButton, options = {}) {
     skippyLog("[Skippy] settings changed", s);
   });
 
-  skippyLog("[Skippy] polling started", { host: location.host, intervalMs, cooldownMs });
-  setInterval(() => {
-    if (!settings) return;
-    const button = findSkipButton(settings);
-    if (!button) return;
-    const last = lastClickedAt.get(button) || 0;
-    if (Date.now() - last < cooldownMs) return;
-    lastClickedAt.set(button, Date.now());
-    const label = button.getAttribute("aria-label") || (button.textContent || "").trim().slice(0, 80);
-    // Click event is the load-bearing user-visible action — log even when verboseLogging is off
-    // so a user troubleshooting "did Skippy actually skip?" sees a one-liner without re-enabling
-    // the full verbose stream.
-    console.log("[Skippy] clicking", label || "(no label)", button);
-    skippyClick(button);
-  }, intervalMs);
+  /**
+   * One iteration of the poll loop. Reads the current `pollIntervalMs` from settings
+   * (clamped via `SkippyStorage.clampPollIntervalMs` as a defensive fallback) and re-arms
+   * itself. Runs the adapter, gates clicks by cooldown, logs the click unconditionally.
+   * @returns {void}
+   */
+  function tick() {
+    let intervalMs = fallbackIntervalMs;
+    try {
+      if (settings) {
+        intervalMs = SkippyStorage.clampPollIntervalMs(settings.pollIntervalMs ?? fallbackIntervalMs);
+        const button = findSkipButton(settings);
+        if (button) {
+          const last = lastClickedAt.get(button) || 0;
+          if (Date.now() - last >= cooldownMs) {
+            lastClickedAt.set(button, Date.now());
+            const label = button.getAttribute("aria-label") || (button.textContent || "").trim().slice(0, 80);
+            // Click event is the load-bearing user-visible action — log even when verboseLogging is off
+            // so a user troubleshooting "did Skippy actually skip?" sees a one-liner without re-enabling
+            // the full verbose stream.
+            console.log("[Skippy] clicking", label || "(no label)", button);
+            skippyClick(button);
+          }
+        }
+      }
+    } finally {
+      setTimeout(tick, intervalMs);
+    }
+  }
+
+  skippyLog("[Skippy] polling started", { host: location.host, fallbackIntervalMs, cooldownMs });
+  setTimeout(tick, fallbackIntervalMs);
 }
 
 // Expose for site adapters.

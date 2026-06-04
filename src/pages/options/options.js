@@ -39,6 +39,19 @@ async function init() {
     });
   }
 
+  // Hydrate the poll-interval number input. Round-trip through clampPollIntervalMs so
+  // a user typing an out-of-range value snaps it to the supported floor / ceiling on blur.
+  const pollInput = /** @type {HTMLInputElement | null} */ (document.getElementById("pollIntervalMs"));
+  if (pollInput) {
+    pollInput.value = String(settings.pollIntervalMs);
+    pollInput.addEventListener("change", async () => {
+      const clamped = SkippyStorage.clampPollIntervalMs(pollInput.value);
+      pollInput.value = String(clamped);
+      await SkippyStorage.saveSkippySettings({ pollIntervalMs: clamped });
+      showStatus("Saved");
+    });
+  }
+
   // Hydrate per-site toggles.
   const siteInputs = /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll("input[data-site]"));
   siteInputs.forEach((input) => {
