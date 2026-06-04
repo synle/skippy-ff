@@ -35,12 +35,17 @@ jobs:
     # https://github.com/synle/workflows/blob/main/.github/workflows/build-and-commit-sh.yml
     # `deploy-to-pages: false` — Skippy is a Chrome extension; there is no website to host
     # on GitHub Pages. Leaving this on caused the `deploy-pages@v4` step to fail with
-    # `HttpError: Not Found` because Pages was never enabled on this repo.
+    # `HttpError: Not Found` because Pages was never enabled on this repo. `pages` /
+    # `id-token` permissions must stay declared here even with the deploy off, because the
+    # reusable workflow declares them at its job level and the caller has to grant a
+    # superset (else the run startup-fails).
     uses: synle/workflows/.github/workflows/build-and-commit-sh.yml@main
     with:
       deploy-to-pages: false
     permissions:
       contents: write
+      pages: write
+      id-token: write
 
   coverage:
     # Coverage thresholds live in vite.config.js under
