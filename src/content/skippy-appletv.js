@@ -1,19 +1,15 @@
 /** Skippy Apple TV adapter. Detects and clicks the Skip overlay button and the Play Next Episode button. */
 
 /**
- * Throttled debug logger — keeps a polling-loop friendly trickle of state out of the console
- * by only emitting when the message text differs from the last emission. Pass the same `key`
- * with the same `message` to suppress duplicates.
+ * Throttled adapter-scoped debug logger — wraps `SkippyCore.skippyDLog` with a site prefix
+ * and dedupe key namespace. Silent unless `settings.verboseLogging` is on.
  * @param {string} key Stable identifier for the log line (e.g. "scan").
  * @param {string} message Text to log; suppressed when equal to the previous message for this key.
  * @param {...unknown} extras Additional values to log alongside.
  * @returns {void}
  */
-const _lastLog = /** @type {Record<string, string>} */ ({});
 function dlog(key, message, ...extras) {
-  if (_lastLog[key] === message) return;
-  _lastLog[key] = message;
-  console.log(`[Skippy/AppleTV] ${message}`, ...extras);
+  SkippyCore.skippyDLog(`appletv:${key}`, `[Skippy/AppleTV] ${message}`, ...extras);
 }
 
 /**
@@ -135,7 +131,7 @@ function findAppleTvSkipButton(settings) {
   return findAppleTvSkipOverlayButton(settings) || findAppleTvNextEpisodeButton(settings);
 }
 
-console.log("[Skippy/AppleTV] adapter loaded on", location.href, "frame=", window === window.top ? "top" : "iframe");
+SkippyCore.skippyLog("[Skippy/AppleTV] adapter loaded on", location.href, "frame=", window === window.top ? "top" : "iframe");
 
 /**
  * Live inspector — paste `__skippy()` in the console to dump current state.
@@ -174,6 +170,7 @@ globalThis.__skippy = function __skippy() {
       text: (b.textContent || "").trim().slice(0, 40),
     })),
   };
+  // Inspector is invoked manually from DevTools — always emit, regardless of verboseLogging.
   console.log("[Skippy/AppleTV] snapshot", snapshot);
   return snapshot;
 };

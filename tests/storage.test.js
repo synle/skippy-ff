@@ -43,6 +43,11 @@ describe("SkippyStorage", () => {
     expect(settings.skipRecap).toBe(true);
   });
 
+  it("defaults verboseLogging to false (opt-in)", async () => {
+    const settings = await getSkippySettings();
+    expect(settings.verboseLogging).toBe(false);
+  });
+
   it("notifies subscribers when settings change", async () => {
     const cb = vi.fn();
     onSkippySettingsChanged(cb);

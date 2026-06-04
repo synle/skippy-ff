@@ -1,19 +1,15 @@
 /** Skippy Disney+ adapter. Detects and clicks the Skip overlay button and the Up-Next "Next Episode" button. */
 
 /**
- * Throttled debug logger — keeps a polling-loop friendly trickle of state out of the console
- * by only emitting when the message text differs from the last emission. Pass the same `key`
- * with the same `message` to suppress duplicates.
+ * Throttled adapter-scoped debug logger — wraps `SkippyCore.skippyDLog` with a site prefix
+ * and dedupe key namespace. Silent unless `settings.verboseLogging` is on.
  * @param {string} key Stable identifier for the log line (e.g. "scan").
  * @param {string} message Text to log; suppressed when equal to the previous message for this key.
  * @param {...unknown} extras Additional values to log alongside.
  * @returns {void}
  */
-const _lastLog = /** @type {Record<string, string>} */ ({});
 function dlog(key, message, ...extras) {
-  if (_lastLog[key] === message) return;
-  _lastLog[key] = message;
-  console.log(`[Skippy/Disney+] ${message}`, ...extras);
+  SkippyCore.skippyDLog(`disneyplus:${key}`, `[Skippy/Disney+] ${message}`, ...extras);
 }
 
 /**
@@ -125,7 +121,7 @@ function findDisneyPlusSkipButton(settings) {
   return findDisneyPlusSkipOverlayButton(settings) || findDisneyPlusNextEpisodeButton(settings);
 }
 
-console.log("[Skippy/Disney+] adapter loaded on", location.href);
+SkippyCore.skippyLog("[Skippy/Disney+] adapter loaded on", location.href);
 
 // Live inspector — paste `__skippy()` in the console to dump current state.
 /** @returns {object} Snapshot of current adapter state, for manual debugging from DevTools. */
@@ -145,6 +141,7 @@ globalThis.__skippy = function __skippy() {
     })),
     nextEpisode: next ? { visible: SkippyCore.skippyIsVisible(next), rect: next.getBoundingClientRect() } : null,
   };
+  // Inspector is invoked manually from DevTools — always emit, regardless of verboseLogging.
   console.log("[Skippy/Disney+] snapshot", snapshot);
   return snapshot;
 };

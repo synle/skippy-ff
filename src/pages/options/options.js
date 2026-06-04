@@ -2,7 +2,7 @@
 
 import "../../helpers/storage.js";
 
-const FLAG_IDS = ["skipIntro", "skipRecap", "skipCredits"];
+const FLAG_IDS = ["skipIntro", "skipRecap", "skipCredits", "verboseLogging"];
 
 let statusTimer = 0;
 

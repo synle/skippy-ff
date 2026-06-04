@@ -1,5 +1,48 @@
 /** Skippy core. Site-agnostic helpers for detecting and clicking skip buttons. */
 
+/** Verbose-logging flag. Mirrored from `settings.verboseLogging` by `skippyStart`. */
+let _verbose = false;
+
+/** Per-key dedupe cache for `skippyDLog`. Suppresses identical consecutive messages. */
+const _lastDLog = /** @type {Record<string, string>} */ ({});
+
+/**
+ * Flip the in-memory verbose flag. Called by `skippyStart` whenever settings load or change.
+ * @param {boolean} value New verbose state.
+ * @returns {void}
+ */
+function skippySetVerbose(value) {
+  _verbose = !!value;
+}
+
+/**
+ * Verbose-gated `console.log`. No-op unless `settings.verboseLogging` is true. Use this
+ * for any diagnostic line that should be silent for normal users but visible while
+ * debugging from the options page.
+ * @param {...unknown} args Values to log.
+ * @returns {void}
+ */
+function skippyLog(...args) {
+  if (!_verbose) return;
+  console.log(...args);
+}
+
+/**
+ * Throttled verbose log — emits only when the (key, message) pair differs from the
+ * previous emission for the same key. Pair with a stable `key` per call site so a
+ * polling loop doesn't spam the console while state is unchanged.
+ * @param {string} key Stable identifier for the log line.
+ * @param {string} message Text to log; suppressed when equal to the previous message for this key.
+ * @param {...unknown} extras Additional values to log alongside.
+ * @returns {void}
+ */
+function skippyDLog(key, message, ...extras) {
+  if (!_verbose) return;
+  if (_lastDLog[key] === message) return;
+  _lastDLog[key] = message;
+  console.log(message, ...extras);
+}
+
 /**
  * Check if an element is visually present and clickable.
  * Streaming players hide skip buttons via opacity:0 + pointer-events:none rather than display:none.
@@ -80,10 +123,10 @@ function skippyClick(el) {
       el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, composed: true, view: window }));
       el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window }));
       el.click();
-      console.log("[Skippy] click via direct on", tag, el);
+      skippyLog("[Skippy] click via direct on", tag, el);
       return;
     } catch (err) {
-      console.log("[Skippy] direct click failed, falling through", err);
+      skippyLog("[Skippy] direct click failed, falling through", err);
     }
   }
 
@@ -91,12 +134,12 @@ function skippyClick(el) {
   try {
     const shadowBtn = /** @type {HTMLElement|null} */ (el.shadowRoot?.querySelector("button, [role='button']") || null);
     if (shadowBtn) {
-      console.log("[Skippy] click via shadow inner button", shadowBtn);
+      skippyLog("[Skippy] click via shadow inner button", shadowBtn);
       skippyClick(shadowBtn);
       return;
     }
   } catch (err) {
-    console.log("[Skippy] shadow click attempt failed", err);
+    skippyLog("[Skippy] shadow click attempt failed", err);
   }
 
   // 3. elementFromPoint hit-test — works for closed shadow roots too.
@@ -106,21 +149,21 @@ function skippyClick(el) {
     const cy = rect.top + rect.height / 2;
     const hit = /** @type {HTMLElement|null} */ (document.elementFromPoint(cx, cy));
     if (hit && hit !== el) {
-      console.log("[Skippy] click via elementFromPoint", hit);
+      skippyLog("[Skippy] click via elementFromPoint", hit);
       hit.click();
       return;
     }
   } catch (err) {
-    console.log("[Skippy] elementFromPoint click attempt failed", err);
+    skippyLog("[Skippy] elementFromPoint click attempt failed", err);
   }
 
   // 4. Last-resort composed MouseEvent + native click on the original element.
   try {
     el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window }));
     el.click();
-    console.log("[Skippy] click via fallback composed + native", el);
+    skippyLog("[Skippy] click via fallback composed + native", el);
   } catch (err) {
-    console.log("[Skippy] fallback click failed", err);
+    skippyLog("[Skippy] fallback click failed", err);
   }
 }
 
@@ -142,14 +185,16 @@ function skippyStart(findSkipButton, options = {}) {
   let settings = null;
   SkippyStorage.getSkippySettings().then((s) => {
     settings = s;
-    console.log("[Skippy] loaded settings", s);
+    skippySetVerbose(s.verboseLogging);
+    skippyLog("[Skippy] loaded settings", s);
   });
   SkippyStorage.onSkippySettingsChanged((s) => {
     settings = s;
-    console.log("[Skippy] settings changed", s);
+    skippySetVerbose(s.verboseLogging);
+    skippyLog("[Skippy] settings changed", s);
   });
 
-  console.log("[Skippy] polling started", { host: location.host, intervalMs, cooldownMs });
+  skippyLog("[Skippy] polling started", { host: location.host, intervalMs, cooldownMs });
   setInterval(() => {
     if (!settings) return;
     const button = findSkipButton(settings);
@@ -158,6 +203,9 @@ function skippyStart(findSkipButton, options = {}) {
     if (Date.now() - last < cooldownMs) return;
     lastClickedAt.set(button, Date.now());
     const label = button.getAttribute("aria-label") || (button.textContent || "").trim().slice(0, 80);
+    // Click event is the load-bearing user-visible action — log even when verboseLogging is off
+    // so a user troubleshooting "did Skippy actually skip?" sees a one-liner without re-enabling
+    // the full verbose stream.
     console.log("[Skippy] clicking", label || "(no label)", button);
     skippyClick(button);
   }, intervalMs);
@@ -170,4 +218,7 @@ globalThis.SkippyCore = {
   skippyFindVisible,
   skippyClick,
   skippyStart,
+  skippyLog,
+  skippyDLog,
+  skippySetVerbose,
 };

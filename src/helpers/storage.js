@@ -1,10 +1,12 @@
 /** Skippy storage helpers. Wraps chrome.storage.sync with defaults. */
 
-/** Default skip flags. All on by default. */
+/** Default skip flags. All on by default; verbose logging off by default (opt-in for testing). */
 const SKIPPY_DEFAULTS = {
   skipIntro: true,
   skipRecap: true,
   skipCredits: true,
+  /** When true, content scripts emit `[Skippy]` / `[Skippy/<site>]` console logs. Off by default to keep the DevTools console quiet for normal users; toggle on in the options page to debug a misbehaving adapter. */
+  verboseLogging: false,
   enabledSites: {
     "crunchyroll.com": true,
     "disneyplus.com": true,
