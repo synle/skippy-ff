@@ -11,6 +11,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    # Standalone unit-test job. Mirrors `npm test` (Vitest) and `npm run lint`
+    # decoupled from the coverage threshold gate so a regression shows up as a
+    # plain "test" failure without being conflated with "coverage dropped".
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - run: npm ci || npm install --no-fund --prefer-offline
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
   build:
     # https://github.com/synle/workflows/blob/main/.github/workflows/build-and-commit-sh.yml
     uses: synle/workflows/.github/workflows/build-and-commit-sh.yml@main

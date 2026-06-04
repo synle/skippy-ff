@@ -1,5 +1,7 @@
 # Skippy
 
+[![build-main](https://github.com/synle/skippy-ff/actions/workflows/build-main.yml/badge.svg?branch=main)](https://github.com/synle/skippy-ff/actions/workflows/build-main.yml)
+
 Auto-skip intros, recaps, and credits while you binge. SponsorBlock for streaming services.
 
 Currently supports **Crunchyroll**, **Disney+**, and **Apple TV**. Netflix, Hulu, and more are on the roadmap.
