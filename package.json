@@ -2,9 +2,17 @@
   "name": "skippy",
   "type": "module",
   "version": "0.7.0",
-  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Netflix, Disney+, Hulu, and more.",
+  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+, and Apple TV.",
   "author": "Sy Le",
   "license": "ISC",
+  "homepage": "https://github.com/synle/skippy-ff",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/synle/skippy-ff.git"
+  },
+  "bugs": {
+    "url": "https://github.com/synle/skippy-ff/issues"
+  },
   "scripts": {
     "dev": "npm run build:types && vite build --watch",
     "build": "npm run build:types && vite build",
