@@ -55,7 +55,15 @@ skippy-ff/
 └── README.md
 ```
 
-## Settings (defaults)
+## Settings
+
+<p align="center">
+  <img src="docs/screenshots/options.png" alt="Skippy options page — checkboxes for each skip type, per-site toggles, poll interval, and verbose logging" width="380" />
+</p>
+
+The popup (also reachable via `chrome://extensions/` → Skippy → Details → Extension options) groups settings into **What to skip**, **Sites**, **Advanced** (poll interval), and **Debugging** (verbose logging).
+
+### Defaults
 
 | Flag             | Default | Description                                                                  |
 | ---------------- | ------- | ---------------------------------------------------------------------------- |
