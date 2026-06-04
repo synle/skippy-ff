@@ -66,11 +66,12 @@ One adapter per streaming service. Each one:
 2. Returns a visible `HTMLElement` to click, or `null`.
 3. Ends with `SkippyCore.skippyStart(adapterFn)`.
 
-Adapter strategies trend from strict (per-site `aria-label` exact match on Crunchyroll) to multi-strategy with shadow-DOM traversal (Disney+, Apple TV). The latter is necessary when a site:
+Adapter strategies trend from strict (per-site `aria-label` exact match on Crunchyroll) to multi-strategy with shadow-DOM traversal (Disney+, Apple TV) and forgiving attribute-OR-text matching (Netflix). The latter is necessary when a site:
 
 - Renders skip UI behind open shadow roots (Disney+ `<disney-web-player-ui>`).
 - Uses unstable class names (Svelte hash churn on Apple TV — primary selector is `data-testid`; class + text are fallbacks).
 - Embeds the player in a same-origin iframe (Apple TV — manifest entry uses `all_frames: true`).
+- Renders skip prompts as plain `<button>` elements identified by `data-uia` token (Netflix `player-skip-intro`, `player-skip-recap`, `next-episode-seamless-button`). Adapter probes the `data-uia` substring AND a normalized, case-insensitive text match in parallel so either drifting independently keeps clicks firing.
 
 Adapters expose a `__skippy()` console inspector for manual debugging from DevTools, regardless of the verbose-logging setting.
 
