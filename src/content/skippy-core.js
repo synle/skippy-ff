@@ -18,6 +18,27 @@ function skippyIsVisible(el) {
 }
 
 /**
+ * Permissive presence check — true when the element is attached to the document,
+ * occupies layout space, and isn't `display:none` / `visibility:hidden`. Unlike
+ * `skippyIsVisible`, this does NOT gate on `opacity` or `pointer-events`, because
+ * some players (e.g. Crunchyroll) toggle those off while the player controls fade
+ * out on mouse idle even though the underlying click handler is still wired up
+ * and would respond to a programmatic `.click()`. Use this when a site keeps the
+ * skip button mounted full-time and only animates its chrome.
+ * @param {Element} el Candidate element.
+ * @returns {boolean} True when the element is in the DOM with non-zero layout box.
+ */
+function skippyIsPresent(el) {
+  if (!el || !(el instanceof Element)) return false;
+  if (!el.isConnected) return false;
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  const style = window.getComputedStyle(el);
+  if (style.visibility === "hidden" || style.display === "none") return false;
+  return true;
+}
+
+/**
  * Find the first visible element matching one of the candidate selectors.
  * @param {string[]} selectors CSS selectors to try in order.
  * @returns {HTMLElement|null} First visible match or null.
@@ -145,6 +166,7 @@ function skippyStart(findSkipButton, options = {}) {
 // Expose for site adapters.
 globalThis.SkippyCore = {
   skippyIsVisible,
+  skippyIsPresent,
   skippyFindVisible,
   skippyClick,
   skippyStart,
