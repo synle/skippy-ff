@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 // polling loop does, and we never call `skippyStart` in these tests.
 await import("../src/content/skippy-core.js");
 
-const { skippyIsVisible, skippyIsPresent } = globalThis.SkippyCore;
+const { skippyIsVisible, skippyIsPresent, skippyFindVisible } = globalThis.SkippyCore;
 
 /**
  * Override jsdom's `getBoundingClientRect` (which returns 0×0 for every element because
@@ -133,6 +133,38 @@ describe("SkippyCore.skippyIsVisible", () => {
   it("returns false when pointer-events:none (gate 8)", () => {
     expect(skippyIsVisible(mkButton({ style: { pointerEvents: "none" } }))).toBe(false);
   });
+
+  // --- Author-intent edge cases --------------------------------------------------------
+
+  it("returns true when aria-hidden='false' — only literal 'true' should hide per WAI-ARIA", () => {
+    expect(skippyIsVisible(mkButton({ attrs: { "aria-hidden": "false" } }))).toBe(true);
+  });
+
+  it("returns true when aria-hidden='' (empty) — empty attribute is not the literal 'true'", () => {
+    expect(skippyIsVisible(mkButton({ attrs: { "aria-hidden": "" } }))).toBe(true);
+  });
+
+  it("returns false when aria-hidden='true' is two levels up", () => {
+    const grand = document.createElement("section");
+    grand.setAttribute("aria-hidden", "true");
+    document.body.appendChild(grand);
+    const parent = document.createElement("div");
+    grand.appendChild(parent);
+    expect(skippyIsVisible(mkButton({ parent }))).toBe(false);
+  });
+
+  it("returns false when [inert] is two levels up", () => {
+    const grand = document.createElement("section");
+    grand.setAttribute("inert", "");
+    document.body.appendChild(grand);
+    const parent = document.createElement("div");
+    grand.appendChild(parent);
+    expect(skippyIsVisible(mkButton({ parent }))).toBe(false);
+  });
+
+  it("returns true with opacity='1' (the always-fully-opaque case)", () => {
+    expect(skippyIsVisible(mkButton({ style: { opacity: "1" } }))).toBe(true);
+  });
 });
 
 describe("SkippyCore.skippyIsPresent", () => {
@@ -198,5 +230,62 @@ describe("SkippyCore.skippyIsPresent", () => {
 
   it("returns false when rect is 0×0", () => {
     expect(skippyIsPresent(mkButton({ rect: { width: 0, height: 0 } }))).toBe(false);
+  });
+
+  it("returns false when aria-hidden='true' two levels up", () => {
+    const grand = document.createElement("section");
+    grand.setAttribute("aria-hidden", "true");
+    document.body.appendChild(grand);
+    const parent = document.createElement("div");
+    grand.appendChild(parent);
+    expect(skippyIsPresent(mkButton({ parent }))).toBe(false);
+  });
+});
+
+describe("SkippyCore.skippyFindVisible", () => {
+  it("returns null when the selector list is empty", () => {
+    mkButton({ attrs: { class: "skip" } });
+    expect(skippyFindVisible([])).toBeNull();
+  });
+
+  it("returns null when no element matches any selector", () => {
+    mkButton({ attrs: { class: "other" } });
+    expect(skippyFindVisible([".missing", ".also-missing"])).toBeNull();
+  });
+
+  it("returns null when matches exist but none are visible", () => {
+    mkButton({ attrs: { class: "skip" }, style: { display: "none" } });
+    mkButton({ attrs: { class: "skip" }, style: { visibility: "hidden" } });
+    expect(skippyFindVisible([".skip"])).toBeNull();
+  });
+
+  it("returns the first visible element matching a single selector", () => {
+    const a = mkButton({ attrs: { class: "skip", "data-tag": "a" } });
+    mkButton({ attrs: { class: "skip", "data-tag": "b" } });
+    expect(skippyFindVisible([".skip"])).toBe(a);
+  });
+
+  it("skips hidden candidates within a selector and returns the next visible one", () => {
+    mkButton({ attrs: { class: "skip", "data-tag": "hidden" }, style: { display: "none" } });
+    const visible = mkButton({ attrs: { class: "skip", "data-tag": "visible" } });
+    expect(skippyFindVisible([".skip"])).toBe(visible);
+  });
+
+  it("falls through to the next selector when the first has no visible candidates", () => {
+    mkButton({ attrs: { class: "first" }, style: { display: "none" } });
+    const second = mkButton({ attrs: { class: "second" } });
+    expect(skippyFindVisible([".first", ".second"])).toBe(second);
+  });
+
+  it("respects selector priority — first selector with a visible match wins", () => {
+    const fromFirst = mkButton({ attrs: { class: "primary" } });
+    mkButton({ attrs: { class: "secondary" } });
+    expect(skippyFindVisible([".primary", ".secondary"])).toBe(fromFirst);
+  });
+
+  it("respects aria-hidden when scanning — author-intent gate flows from skippyIsVisible", () => {
+    mkButton({ attrs: { class: "skip", "aria-hidden": "true" } });
+    const visible = mkButton({ attrs: { class: "skip" } });
+    expect(skippyFindVisible([".skip"])).toBe(visible);
   });
 });

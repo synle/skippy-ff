@@ -1,6 +1,6 @@
-# Skippy
+# Skippy-FF
 
-[![build-main](https://github.com/synle/skippy-ff/actions/workflows/build-main.yml/badge.svg?branch=main)](https://github.com/synle/skippy-ff/actions/workflows/build-main.yml)
+[![build-main](https://github.com/synle/skippy-ff/actions/workflows/build-main.yml/badge.svg)](https://github.com/synle/skippy-ff/actions/workflows/build-main.yml)
 
 Auto-skip intros, recaps, and credits while you binge. SponsorBlock for streaming services.
 
@@ -20,7 +20,7 @@ npm run build
 1. Open Chrome → `chrome://extensions/`
 2. Enable **Developer mode**
 3. **Load unpacked** → select the `dist/` folder
-4. Pin the extension to your toolbar (puzzle icon → pin Skippy) for quick access to settings
+4. Pin the extension to your toolbar (puzzle icon → pin Skippy-FF) for quick access to settings
 
 ## Scripts
 
@@ -58,10 +58,10 @@ skippy-ff/
 ## Settings
 
 <p align="center">
-  <img src="docs/screenshots/options.png" alt="Skippy options page — checkboxes for each skip type, per-site toggles, poll interval, and verbose logging" width="380" />
+  <img src="docs/screenshots/options.png" alt="Skippy-FF options page — checkboxes for each skip type, per-site toggles, poll interval, and verbose logging" width="380" />
 </p>
 
-The popup (also reachable via `chrome://extensions/` → Skippy → Details → Extension options) groups settings into **What to skip**, **Sites**, **Advanced** (poll interval), and **Debugging** (verbose logging).
+The popup (also reachable via `chrome://extensions/` → Skippy-FF → Details → Extension options) groups settings into **What to skip**, **Sites**, **Advanced** (poll interval), and **Debugging** (verbose logging).
 
 ### Defaults
 

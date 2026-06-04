@@ -106,4 +106,81 @@ describe("SkippyStorage", () => {
     expect(cb).toHaveBeenCalledTimes(1);
     expect(cb.mock.calls[0][0].skipIntro).toBe(false);
   });
+
+  // --- Default-shape regressions -------------------------------------------------------
+
+  it("ships skip flags on by default — protects against accidental opt-in regression", () => {
+    expect(SKIPPY_DEFAULTS.skipIntro).toBe(true);
+    expect(SKIPPY_DEFAULTS.skipRecap).toBe(true);
+    expect(SKIPPY_DEFAULTS.skipCredits).toBe(true);
+  });
+
+  it("enables all three supported sites by default", () => {
+    expect(SKIPPY_DEFAULTS.enabledSites["crunchyroll.com"]).toBe(true);
+    expect(SKIPPY_DEFAULTS.enabledSites["disneyplus.com"]).toBe(true);
+    expect(SKIPPY_DEFAULTS.enabledSites["tv.apple.com"]).toBe(true);
+  });
+
+  it("does not leak mutations to SKIPPY_DEFAULTS across reads", async () => {
+    const first = await getSkippySettings();
+    first.skipIntro = false;
+    first.enabledSites["crunchyroll.com"] = false;
+    const second = await getSkippySettings();
+    expect(second.skipIntro).toBe(true);
+    expect(second.enabledSites["crunchyroll.com"]).toBe(true);
+  });
+
+  // --- pollIntervalMs clamp boundary regressions --------------------------------------
+
+  it("accepts pollIntervalMs at the lower boundary", () => {
+    expect(clampPollIntervalMs(SKIPPY_POLL_MIN_MS)).toBe(SKIPPY_POLL_MIN_MS);
+  });
+
+  it("accepts pollIntervalMs at the upper boundary", () => {
+    expect(clampPollIntervalMs(SKIPPY_POLL_MAX_MS)).toBe(SKIPPY_POLL_MAX_MS);
+  });
+
+  it("clamps negative numbers up to the floor", () => {
+    expect(clampPollIntervalMs(-1)).toBe(SKIPPY_POLL_MIN_MS);
+    expect(clampPollIntervalMs(-999_999)).toBe(SKIPPY_POLL_MIN_MS);
+  });
+
+  it("falls back to the default for Infinity / NaN — Number.isFinite guard", () => {
+    expect(clampPollIntervalMs(Number.POSITIVE_INFINITY)).toBe(SKIPPY_DEFAULTS.pollIntervalMs);
+    expect(clampPollIntervalMs(Number.NEGATIVE_INFINITY)).toBe(SKIPPY_DEFAULTS.pollIntervalMs);
+    expect(clampPollIntervalMs(Number.NaN)).toBe(SKIPPY_DEFAULTS.pollIntervalMs);
+  });
+
+  it("rounds non-integer values via Math.round", () => {
+    expect(clampPollIntervalMs(750.4)).toBe(750);
+    expect(clampPollIntervalMs(750.7)).toBe(751);
+  });
+
+  // --- enabledSites merge semantics ---------------------------------------------------
+
+  it("preserves untouched sites when toggling one site", async () => {
+    await saveSkippySettings({ enabledSites: { "tv.apple.com": false } });
+    const settings = await getSkippySettings();
+    expect(settings.enabledSites["tv.apple.com"]).toBe(false);
+    expect(settings.enabledSites["crunchyroll.com"]).toBe(true);
+    expect(settings.enabledSites["disneyplus.com"]).toBe(true);
+  });
+
+  it("retains user-added site keys not present in defaults — future-site forward-compat", async () => {
+    await saveSkippySettings({ enabledSites: { "netflix.com": true } });
+    const settings = await getSkippySettings();
+    expect(settings.enabledSites["netflix.com"]).toBe(true);
+    expect(settings.enabledSites["crunchyroll.com"]).toBe(true);
+  });
+
+  // --- nextEpisode persistence regressions --------------------------------------------
+
+  it("persists nextEpisode + skipIntro independently across saves", async () => {
+    await saveSkippySettings({ nextEpisode: false });
+    await saveSkippySettings({ skipIntro: false });
+    const settings = await getSkippySettings();
+    expect(settings.nextEpisode).toBe(false);
+    expect(settings.skipIntro).toBe(false);
+    expect(settings.skipCredits).toBe(true);
+  });
 });
