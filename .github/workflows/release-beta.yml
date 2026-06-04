@@ -1,0 +1,88 @@
+name: release-beta
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Git SHA to build from (defaults to HEAD if empty)"
+        required: false
+        default: ""
+      notes:
+        description: "Optional release notes (prepended to auto-generated changelog)"
+        required: false
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-beta:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.sha || github.sha }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - run: npm ci || npm install --no-fund --prefer-offline
+
+      # Pre-build: resolve tag and create draft
+      - name: Resolve tag
+        id: tag
+        uses: synle/workflows/actions/release/_common/resolve-tag@main
+        with:
+          mode: beta
+          sha: ${{ github.event.inputs.sha }}
+
+      - name: Create draft
+        uses: synle/workflows/actions/release/_common/draft@main
+        with:
+          tag: ${{ steps.tag.outputs.tag }}
+          project_name: Skippy Beta
+
+      # Mark manifest as beta (repo-specific)
+      - name: Mark manifest as beta
+        run: |
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('src/manifest.json', 'utf-8'));
+            m.name = 'Skippy (Beta)';
+            m.version_name = m.version + '-beta.${{ steps.tag.outputs.short_sha }}';
+            fs.writeFileSync('src/manifest.json', JSON.stringify(m, null, 2) + '\n');
+          "
+
+      # Build (repo-specific)
+      - name: Build and package
+        id: build
+        run: npm run package
+
+      # Restore manifest (repo-specific)
+      - name: Restore manifest
+        if: always()
+        run: git checkout src/manifest.json
+
+      # Post-build: generate notes and finalize
+      - name: Generate release notes
+        if: always()
+        uses: synle/workflows/actions/release/_common/notes@main
+        with:
+          tag: ${{ steps.tag.outputs.tag }}
+          project_name: Skippy Beta
+          user_notes: ${{ github.event.inputs.notes }}
+
+      - name: Finalize release
+        if: always()
+        uses: synle/workflows/actions/release/_common/finalize@main
+        with:
+          tag: ${{ steps.tag.outputs.tag }}
+          project_name: Skippy Beta
+          mode: beta
+          build_result: ${{ steps.build.outcome }}
+          files: skippy-ff.zip
