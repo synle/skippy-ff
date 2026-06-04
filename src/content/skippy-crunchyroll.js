@@ -1,11 +1,5 @@
 /** Skippy Crunchyroll adapter. Detects and clicks Skip Intro/Recap/Credits buttons and the Next Episode button. */
 
-/** Delay before the Next Episode button is allowed to be clicked, measured from the last time Skip Credits was returned to the core. Gives the player a moment to surface the up-next chrome and lets the credits-skip animation finish before we advance the episode. */
-const NEXT_EPISODE_DELAY_AFTER_CREDITS_MS = 5000;
-
-/** Wall-clock timestamp (ms) at which Skip Credits was last handed to the polling loop for clicking. `0` means "never within this page lifetime". Used to gate the Next Episode click on `Date.now() - lastSkipCreditsAt >= NEXT_EPISODE_DELAY_AFTER_CREDITS_MS`. */
-let lastSkipCreditsAt = 0;
-
 /**
  * Find a button by its aria-label. Crunchyroll uses aria-label="Skip Intro" etc.
  *
@@ -33,36 +27,45 @@ function findButtonByAriaLabel(label) {
 }
 
 /**
- * Find the Crunchyroll "Next Episode" button rendered after credits roll. The button
- * carries a stable `data-testid="next-episode-button"` plus `aria-label="Next Episode"`;
- * we probe the testid first and fall back to the aria-label so the adapter survives
- * either attribute drifting.
+ * Resolve the Crunchyroll "Next Episode" button without filtering on visibility.
  *
- * Strict visibility only — the up-next chrome surfaces this button at full opacity
- * for the entire post-credits window, so the permissive `skippyIsPresent` fallback
- * would just find it the moment Crunchyroll mounts the element and fire long before
- * the chrome animates in.
+ * The button (stable `data-testid="next-episode-button"`, `aria-label="Next Episode"`)
+ * lives in the player's persistent control chrome — Crunchyroll renders it any time the
+ * player is up, regardless of whether the episode is mid-stream, in credits, or done.
+ * That means a `skippyIsVisible` gate here is useless: it returns the button mid-episode
+ * just as readily as during the up-next window, and Skippy would fire over and over.
  *
- * Caller is responsible for the `nextEpisode` flag and the post-credits delay gate —
- * this function just resolves the DOM candidate.
- * @returns {HTMLElement|null} The Next Episode button, or null when not yet rendered.
+ * The discriminator instead lives at the caller: `findCrunchyrollSkipButton` only looks
+ * up Next Episode when the Skip Credits prompt is *currently visible* — Crunchyroll only
+ * surfaces that prompt during the credits roll, so it's a reliable "we're at end of
+ * episode" signal.
+ * @returns {HTMLElement|null} The Next Episode button, or null when not rendered.
  */
 function findNextEpisodeButton() {
-  const nodes = document.querySelectorAll('button[data-testid="next-episode-button"], button[aria-label="Next Episode"]');
-  for (const node of nodes) {
-    if (SkippyCore.skippyIsVisible(node)) return /** @type {HTMLElement} */ (node);
-  }
-  return null;
+  return /** @type {HTMLElement|null} */ (
+    document.querySelector('button[data-testid="next-episode-button"], button[aria-label="Next Episode"]')
+  );
 }
 
 /**
- * Site adapter for Crunchyroll. Returns the visible skip button to click, or null.
+ * Site adapter for Crunchyroll. Returns the visible button to click, or null.
  *
- * Order matters: Skip Intro → Skip Recap → Skip Credits → Next Episode. When Skip Credits
- * is returned we stamp `lastSkipCreditsAt` so the Next Episode branch waits
- * `NEXT_EPISODE_DELAY_AFTER_CREDITS_MS` before firing — the player needs a moment to
- * dismiss the credits-skip animation and surface the up-next chrome, and clicking too
- * eagerly lands on a stale handler.
+ * Order: Skip Intro → Skip Recap → end-of-episode dispatch.
+ *
+ * End-of-episode dispatch uses Skip Credits visibility as the "we're at credits" signal
+ * (Crunchyroll only surfaces that prompt during the credits roll). Once detected:
+ *   - `nextEpisode` flag on → click Next Episode (advances past the post-credits screen
+ *     in one shot). The detection signal is independent of the `skipCredits` flag — a
+ *     user can disable credit-skipping but still want auto-advance.
+ *   - `nextEpisode` flag off + `skipCredits` flag on → click Skip Credits (lands on the
+ *     post-credits "Up Next" screen).
+ *   - Both off → no-op.
+ *
+ * Earlier versions used a 5-second timer after Skip Credits to gate the Next Episode
+ * click, but the timer was a workaround for a stricter problem: the Next Episode button
+ * is mounted full-time, so any time- or visibility-based gate on it alone false-positives
+ * mid-episode. Anchoring on Skip Credits visibility removes the false positives without
+ * any timing state.
  * @param {object} settings Current Skippy settings.
  * @returns {HTMLElement|null}
  */
@@ -77,17 +80,15 @@ function findCrunchyrollSkipButton(settings) {
     const btn = findButtonByAriaLabel("Skip Recap");
     if (btn) return btn;
   }
-  if (settings.skipCredits) {
-    const btn = findButtonByAriaLabel("Skip Credits");
-    if (btn) {
-      lastSkipCreditsAt = Date.now();
-      return btn;
+
+  // End-of-episode dispatch — see function docstring for the trigger model.
+  const skipCreditsBtn = findButtonByAriaLabel("Skip Credits");
+  if (skipCreditsBtn) {
+    if (settings.nextEpisode) {
+      const nextBtn = findNextEpisodeButton();
+      if (nextBtn) return nextBtn;
     }
-  }
-  if (settings.nextEpisode) {
-    if (Date.now() - lastSkipCreditsAt < NEXT_EPISODE_DELAY_AFTER_CREDITS_MS) return null;
-    const btn = findNextEpisodeButton();
-    if (btn) return btn;
+    if (settings.skipCredits) return skipCreditsBtn;
   }
   return null;
 }
