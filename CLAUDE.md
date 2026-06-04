@@ -12,7 +12,7 @@ Skippy is a Chrome Extension (Manifest V3) that auto-clicks "Skip Intro", "Skip 
 npm run dev          # Build to dist/ in watch mode
 npm run build        # One-off production build → dist/ (also runs tsc)
 npm run build:types  # Type declarations only (currently a no-op until checked files are added)
-npm run bundle       # Create skippy.zip from dist/
+npm run bundle       # Create skippy-ff.zip from dist/
 npm run package      # build + bundle
 npm run test         # Vitest run
 npm run test:coverage

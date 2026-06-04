@@ -25,7 +25,7 @@ npm run build
 | Command           | Purpose                            |
 | ----------------- | ---------------------------------- |
 | `npm run build`   | Copy `src/` + `public/` to `dist/` |
-| `npm run bundle`  | Zip `dist/` into `skippy.zip`      |
+| `npm run bundle`  | Zip `dist/` into `skippy-ff.zip`   |
 | `npm run package` | Build + bundle                     |
 | `npm run format`  | Prettier (140 char width)          |
 
