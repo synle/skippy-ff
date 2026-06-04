@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Skippy",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+, Apple TV, and Netflix. Created by Sy Le.",
   "author": "Sy Le",
   "homepage_url": "https://github.com/synle/skippy-ff",
@@ -10,33 +10,60 @@
     "48": "icon-48.png",
     "128": "icon-128.png"
   },
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "options_page": "pages/options/options.html",
   "action": {
     "default_popup": "pages/options/options.html"
   },
   "content_scripts": [
     {
-      "matches": ["https://www.crunchyroll.com/*", "https://beta.crunchyroll.com/*"],
-      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-crunchyroll.js"],
+      "matches": [
+        "https://www.crunchyroll.com/*",
+        "https://beta.crunchyroll.com/*"
+      ],
+      "js": [
+        "helpers/storage.js",
+        "content/skippy-core.js",
+        "content/skippy-crunchyroll.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     },
     {
-      "matches": ["https://www.disneyplus.com/*"],
-      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-disneyplus.js"],
+      "matches": [
+        "https://www.disneyplus.com/*"
+      ],
+      "js": [
+        "helpers/storage.js",
+        "content/skippy-core.js",
+        "content/skippy-disneyplus.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     },
     {
-      "matches": ["https://tv.apple.com/*"],
-      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-appletv.js"],
+      "matches": [
+        "https://tv.apple.com/*"
+      ],
+      "js": [
+        "helpers/storage.js",
+        "content/skippy-core.js",
+        "content/skippy-appletv.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true
     },
     {
-      "matches": ["https://www.netflix.com/*"],
-      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-netflix.js"],
+      "matches": [
+        "https://www.netflix.com/*"
+      ],
+      "js": [
+        "helpers/storage.js",
+        "content/skippy-core.js",
+        "content/skippy-netflix.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
