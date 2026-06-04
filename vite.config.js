@@ -15,13 +15,14 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "text-summary", "json-summary", "html"],
       reportsDirectory: "coverage",
-      // Coverage is scoped to code that is actually unit-tested via Vitest. Content scripts
-      // (`src/content/*.js`) and the options-page module (`src/pages/options/options.js`)
-      // run in a real Chrome MV3 context — Chrome storage, shadow DOM, streaming-site UI —
-      // and are validated manually in the browser per CLAUDE.md. Pinning them in jsdom
-      // fixtures would mock away exactly the surface we care about, so they are excluded
-      // here rather than padded with low-signal tests just to satisfy a threshold.
-      include: ["src/helpers/**/*.{js,ts}"],
+      // Coverage is scoped to code that is actually unit-tested via Vitest. Site adapters
+      // (`src/content/skippy-{crunchyroll,disneyplus,appletv}.js`) and the options-page
+      // module (`src/pages/options/options.js`) run in a real Chrome MV3 context — Chrome
+      // storage, shadow DOM, streaming-site UI — and are validated manually in the browser
+      // per CLAUDE.md. `skippy-core.js` is the site-agnostic helper layer (visibility
+      // checks, click dispatch, polling loop), which IS fixturable in jsdom, so it stays
+      // in scope.
+      include: ["src/helpers/**/*.{js,ts}", "src/content/skippy-core.js"],
       exclude: [
         "src/**/*.{test,spec}.{js,ts}",
         "src/**/*.d.ts",
