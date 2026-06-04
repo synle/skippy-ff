@@ -2,7 +2,7 @@
 
 Auto-skip intros, recaps, and credits while you binge. SponsorBlock for streaming services.
 
-Currently supports **Crunchyroll**. Netflix, Disney+, Hulu, and more are on the roadmap.
+Currently supports **Crunchyroll** and **Disney+**. Netflix, Hulu, and more are on the roadmap.
 
 ## How it works
 
@@ -38,7 +38,8 @@ skippy-ff/
 │   ├── helpers/storage.js             # chrome.storage.sync wrapper
 │   ├── content/
 │   │   ├── skippy-core.js             # visibility + click helpers, polling loop
-│   │   └── skippy-crunchyroll.js      # Crunchyroll site adapter
+│   │   ├── skippy-crunchyroll.js      # Crunchyroll site adapter
+│   │   └── skippy-disneyplus.js       # Disney+ site adapter
 │   └── pages/options/                 # Settings page (also used as popup)
 │       ├── options.html
 │       ├── options.css
@@ -71,7 +72,6 @@ Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome pr
 ## Roadmap
 
 - Netflix adapter (`Skip Intro`, `Skip Recap`, `Next Episode`)
-- Disney+ adapter
 - Hulu adapter
 - Toggle for auto-clicking "Next Episode"
 - Per-site skip-flag overrides

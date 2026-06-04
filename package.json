@@ -1,7 +1,7 @@
 {
   "name": "skippy",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Netflix, Disney+, Hulu, and more.",
   "author": "Sy Le",
   "license": "ISC",
