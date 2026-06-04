@@ -2,7 +2,7 @@
 
 Auto-skip intros, recaps, and credits while you binge. SponsorBlock for streaming services.
 
-Currently supports **Crunchyroll** and **Disney+**. Netflix, Hulu, and more are on the roadmap.
+Currently supports **Crunchyroll**, **Disney+**, and **Apple TV**. Netflix, Hulu, and more are on the roadmap.
 
 ## How it works
 
@@ -39,7 +39,8 @@ skippy-ff/
 │   ├── content/
 │   │   ├── skippy-core.js             # visibility + click helpers, polling loop
 │   │   ├── skippy-crunchyroll.js      # Crunchyroll site adapter
-│   │   └── skippy-disneyplus.js       # Disney+ site adapter
+│   │   ├── skippy-disneyplus.js       # Disney+ site adapter
+│   │   └── skippy-appletv.js          # Apple TV site adapter
 │   └── pages/options/                 # Settings page (also used as popup)
 │       ├── options.html
 │       ├── options.css

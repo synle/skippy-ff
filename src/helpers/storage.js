@@ -8,6 +8,7 @@ const SKIPPY_DEFAULTS = {
   enabledSites: {
     "crunchyroll.com": true,
     "disneyplus.com": true,
+    "tv.apple.com": true,
   },
 };
 
