@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Rounded square background -->
+  <rect x="0" y="0" width="128" height="128" rx="24" ry="24" fill="#1B1A26"/>
+
+  <!-- Skip-forward icon: triangle (orange) + bar (cyan) -->
+  <!-- Triangle pointing right, vertically centered -->
+  <polygon points="28,28 28,100 84,64" fill="#FF6A00"/>
+
+  <!-- Vertical bar on the right -->
+  <rect x="92" y="28" width="14" height="72" rx="4" ry="4" fill="#00D4E0"/>
+</svg>

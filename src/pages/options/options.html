@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Skippy — Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>Skippy</h1>
+        <p class="subtitle">Auto-skip intros, recaps, and credits while you binge.</p>
+      </header>
+
+      <section>
+        <h2>What to skip</h2>
+        <label class="toggle">
+          <input type="checkbox" id="skipIntro" />
+          <span>Skip Intro</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="skipRecap" />
+          <span>Skip Recap</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="skipCredits" />
+          <span>Skip Credits</span>
+        </label>
+      </section>
+
+      <section>
+        <h2>Sites</h2>
+        <label class="toggle">
+          <input type="checkbox" id="site-crunchyroll" data-site="crunchyroll.com" />
+          <span>Crunchyroll</span>
+        </label>
+        <p class="muted">Netflix, Disney+, and Hulu coming soon.</p>
+      </section>
+
+      <footer>
+        <span id="status" class="status" aria-live="polite"></span>
+      </footer>
+    </main>
+    <script src="../../helpers/storage.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

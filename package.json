@@ -1,0 +1,21 @@
+{
+  "name": "skippy",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Netflix, Disney+, Hulu, and more.",
+  "author": "Sy Le",
+  "license": "ISC",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "bundle": "node scripts/bundle.js",
+    "package": "npm run build && npm run bundle",
+    "format": "prettier --write --print-width 140 --ignore-unknown --no-error-on-unmatched-pattern --cache '**/*.{js,jsx,ts,tsx,mjs,cjs,json,html,css,md,yml,yaml}'"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1",
+    "prettier": "3.8.2"
+  },
+  "volta": {
+    "node": "20.19.1"
+  }
+}

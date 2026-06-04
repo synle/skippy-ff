@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Skippy",
+  "version": "0.1.0",
+  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Netflix, Disney+, Hulu, and more.",
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "permissions": ["storage"],
+  "options_page": "pages/options/options.html",
+  "action": {
+    "default_popup": "pages/options/options.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.crunchyroll.com/*", "https://beta.crunchyroll.com/*"],
+      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-crunchyroll.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}
