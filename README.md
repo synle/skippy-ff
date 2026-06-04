@@ -4,11 +4,11 @@
 
 Auto-skip intros, recaps, and credits while you binge. SponsorBlock for streaming services.
 
-Currently supports **Crunchyroll**, **Disney+**, and **Apple TV**. Netflix, Hulu, and more are on the roadmap.
+Currently supports **Crunchyroll**, **Disney+** (which now includes Hulu content), **Apple TV**, and **Netflix**.
 
 ## How it works
 
-A content script runs on supported streaming sites. It polls for visible skip buttons (matched by `aria-label`: `Skip Intro`, `Skip Recap`, `Skip Credits`) and clicks them automatically. A per-button cooldown prevents double-clicks. Each skip type is a flag — toggle them in the popup.
+A content script runs on supported streaming sites. It polls for visible skip buttons — matched by `aria-label`, `data-uia`, `data-testid`, or normalized button text (case-insensitive, whitespace-collapsed) depending on the site — and clicks them automatically. A per-button cooldown prevents double-clicks. Each skip type is a flag — toggle them in the popup.
 
 ## Install (unpacked, for development)
 
@@ -42,7 +42,8 @@ skippy-ff/
 │   │   ├── skippy-core.js             # visibility + click helpers, polling loop
 │   │   ├── skippy-crunchyroll.js      # Crunchyroll site adapter
 │   │   ├── skippy-disneyplus.js       # Disney+ site adapter
-│   │   └── skippy-appletv.js          # Apple TV site adapter
+│   │   ├── skippy-appletv.js          # Apple TV site adapter
+│   │   └── skippy-netflix.js          # Netflix site adapter
 │   └── pages/options/                 # Settings page (also used as popup)
 │       ├── options.html
 │       ├── options.css
@@ -65,15 +66,15 @@ The popup (also reachable via `chrome://extensions/` → Skippy-FF → Details �
 
 ### Defaults
 
-| Flag             | Default | Description                                                                  |
-| ---------------- | ------- | ---------------------------------------------------------------------------- |
-| `skipIntro`      | `true`  | Click "Skip Intro" when shown                                                |
-| `skipRecap`      | `true`  | Click "Skip Recap" when shown                                                |
-| `skipCredits`    | `true`  | Click "Skip Credits" when shown                                              |
-| `nextEpisode`    | `true`  | Click the post-credits "Next Episode" / "Play Next Episode" button           |
-| `verboseLogging` | `false` | Emit `[Skippy]` / `[Skippy/<site>]` diagnostics to DevTools                  |
-| `pollIntervalMs` | `500`   | Page-scan cadence; clamped to 100–5000 ms                                    |
-| `enabledSites`   | all on  | Per-site enable toggle (`crunchyroll.com`, `disneyplus.com`, `tv.apple.com`) |
+| Flag             | Default | Description                                                                                 |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------- |
+| `skipIntro`      | `true`  | Click "Skip Intro" when shown                                                               |
+| `skipRecap`      | `true`  | Click "Skip Recap" when shown                                                               |
+| `skipCredits`    | `true`  | Click "Skip Credits" when shown                                                             |
+| `nextEpisode`    | `true`  | Click the post-credits "Next Episode" / "Play Next Episode" button                          |
+| `verboseLogging` | `false` | Emit `[Skippy]` / `[Skippy/<site>]` diagnostics to DevTools                                 |
+| `pollIntervalMs` | `500`   | Page-scan cadence; clamped to 100–5000 ms                                                   |
+| `enabledSites`   | all on  | Per-site enable toggle (`crunchyroll.com`, `disneyplus.com`, `tv.apple.com`, `netflix.com`) |
 
 Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome profiles.
 
@@ -85,6 +86,4 @@ Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome pr
 
 ## Roadmap
 
-- Netflix adapter (`Skip Intro`, `Skip Recap`, `Next Episode`)
-- Hulu adapter
 - Per-site skip-flag overrides

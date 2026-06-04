@@ -21,6 +21,7 @@ const SKIPPY_DEFAULTS = {
     "crunchyroll.com": true,
     "disneyplus.com": true,
     "tv.apple.com": true,
+    "netflix.com": true,
   },
 };
 

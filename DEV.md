@@ -53,7 +53,7 @@ The manifest's `name` is suffixed with `(DEV)` in watch mode so you can tell whi
 
 Four-step ritual. See `ARCHITECTURE.md` § Build pipeline for the why.
 
-1. **Adapter** — create `src/content/skippy-<site>.js`. End with `SkippyCore.skippyStart(adapter)`. The adapter signature is `(settings) => HTMLElement | null`. Refer to `skippy-appletv.js` for the multi-strategy template (testid → class → text), `skippy-disneyplus.js` for shadow-DOM traversal, `skippy-crunchyroll.js` for the simple `aria-label` case.
+1. **Adapter** — create `src/content/skippy-<site>.js`. End with `SkippyCore.skippyStart(adapter)`. The adapter signature is `(settings) => HTMLElement | null`. Refer to `skippy-appletv.js` for the multi-strategy template (testid → class → text), `skippy-disneyplus.js` for shadow-DOM traversal, `skippy-crunchyroll.js` for the simple `aria-label` case, `skippy-netflix.js` for the forgiving `data-uia` substring + normalized case-insensitive text fallback.
 2. **Manifest** — add a `content_scripts` entry in `src/manifest.json` with the site's host patterns under `matches`, and list `helpers/storage.js`, `content/skippy-core.js`, then your new adapter under `js` (order matters: globals before consumers).
 3. **Build plugin** — add a `copyFileSync` line in `vite.config.js`'s `skippy-copy-manifest` plugin for the new content script. Content scripts are **not** Vite inputs — they're copied verbatim because MV3 content scripts can't be ES modules.
 4. **Options page** — add a checkbox row in `src/pages/options/options.html` with `data-site="<hostname>"`. The default in `SKIPPY_DEFAULTS.enabledSites` should be `true`.
