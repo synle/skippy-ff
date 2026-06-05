@@ -27,6 +27,8 @@ const SKIPPY_DEFAULTS = {
     "paramountplus.com": true,
     "peacocktv.com": true,
     "tubitv.com": true,
+    "amcplus.com": true,
+    "shudder.com": true,
   },
 };
 

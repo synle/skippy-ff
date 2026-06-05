@@ -125,6 +125,8 @@ describe("SkippyStorage", () => {
     expect(SKIPPY_DEFAULTS.enabledSites["paramountplus.com"]).toBe(true);
     expect(SKIPPY_DEFAULTS.enabledSites["peacocktv.com"]).toBe(true);
     expect(SKIPPY_DEFAULTS.enabledSites["tubitv.com"]).toBe(true);
+    expect(SKIPPY_DEFAULTS.enabledSites["amcplus.com"]).toBe(true);
+    expect(SKIPPY_DEFAULTS.enabledSites["shudder.com"]).toBe(true);
   });
 
   it("does not leak mutations to SKIPPY_DEFAULTS across reads", async () => {

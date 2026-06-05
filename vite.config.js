@@ -97,6 +97,7 @@ export default defineConfig({
         copyFileSync(resolve(__dirname, "src/content/skippy-paramountplus.js"), join(contentDir, "skippy-paramountplus.js"));
         copyFileSync(resolve(__dirname, "src/content/skippy-peacock.js"), join(contentDir, "skippy-peacock.js"));
         copyFileSync(resolve(__dirname, "src/content/skippy-tubi.js"), join(contentDir, "skippy-tubi.js"));
+        copyFileSync(resolve(__dirname, "src/content/skippy-amcplus.js"), join(contentDir, "skippy-amcplus.js"));
 
         // Storage helper (shared between content scripts and options page; loaded as classic script).
         const helpersDir = resolve(__dirname, "dist/helpers");

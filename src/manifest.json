@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Skippy",
   "version": "0.15.0",
-  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+ (also Hulu content), Apple TV, Netflix, Prime Video, Max, Paramount+, Peacock, and Tubi. Created by Sy Le.",
+  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+ (also Hulu content), Apple TV, Netflix, Prime Video, Max, Paramount+, Peacock, Tubi, AMC+, and Shudder. Created by Sy Le.",
   "author": "Sy Le",
   "homepage_url": "https://github.com/synle/skippy-ff",
   "icons": {
@@ -72,6 +72,12 @@
     {
       "matches": ["https://tubitv.com/*", "https://www.tubitv.com/*"],
       "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-tubi.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://www.amcplus.com/*", "https://amcplus.com/*", "https://www.shudder.com/*", "https://shudder.com/*"],
+      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-amcplus.js"],
       "run_at": "document_idle",
       "all_frames": false
     }
