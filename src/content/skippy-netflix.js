@@ -114,7 +114,8 @@ function probe(uiaToken, textLabel) {
  * @returns {HTMLElement|null}
  */
 function findNetflixSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["netflix.com"] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, "netflix.com");
+  if (!effective.enabled) {
     dlog("disabled", "disabled for netflix.com via settings");
     return null;
   }
@@ -125,26 +126,26 @@ function findNetflixSkipButton(settings) {
 
   dlog(
     "scan",
-    `scan: intro(uia=${introProbe.uiaCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
+    `scan(source=${effective.source}): intro(uia=${introProbe.uiaCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
       `recap(uia=${recapProbe.uiaCount} text=${recapProbe.textCount} visible=${recapProbe.visibleCount}), ` +
       `next(uia=${nextProbe.uiaCount} text=${nextProbe.textCount} visible=${nextProbe.visibleCount})`,
   );
 
-  if (settings.skipIntro) {
+  if (effective.skipIntro) {
     const btn = findButton("skip-intro", "Skip Intro");
     if (btn) {
       dlog("decide-intro", "→ return Skip Intro");
       return btn;
     }
   }
-  if (settings.skipRecap) {
+  if (effective.skipRecap) {
     const btn = findButton("skip-recap", "Skip Recap");
     if (btn) {
       dlog("decide-recap", "→ return Skip Recap");
       return btn;
     }
   }
-  if (settings.nextEpisode) {
+  if (effective.nextEpisode) {
     const btn = findButton("next-episode-seamless-button", "Next Episode");
     if (btn) {
       dlog("decide-next", "→ return Next Episode");

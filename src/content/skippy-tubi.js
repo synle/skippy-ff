@@ -102,7 +102,8 @@ function probe(testidToken, textLabels) {
  * @returns {HTMLElement|null}
  */
 function findTubiSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["tubitv.com"] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, "tubitv.com");
+  if (!effective.enabled) {
     dlog("disabled", "disabled for tubitv.com via settings");
     return null;
   }
@@ -112,18 +113,18 @@ function findTubiSkipButton(settings) {
 
   dlog(
     "scan",
-    `scan: intro(testid=${introProbe.testidCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
+    `scan(source=${effective.source}): intro(testid=${introProbe.testidCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
       `next(testid=${nextProbe.testidCount} text=${nextProbe.textCount} visible=${nextProbe.visibleCount})`,
   );
 
-  if (settings.skipIntro) {
+  if (effective.skipIntro) {
     const btn = findButton("skip-intro", ["Skip Intro", "Skip intro", "SKIP INTRO"]);
     if (btn) {
       dlog("decide-intro", "→ return Skip Intro");
       return btn;
     }
   }
-  if (settings.nextEpisode) {
+  if (effective.nextEpisode) {
     const btn = findButton("up-next", ["Up Next", "Watch Next", "Next Episode", "Play Next"]);
     if (btn) {
       dlog("decide-next", "→ return Up Next");

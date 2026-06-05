@@ -56,7 +56,7 @@ Four-step ritual. See `ARCHITECTURE.md` § Build pipeline for the why.
 1. **Adapter** — create `src/content/skippy-<site>.js`. End with `SkippyCore.skippyStart(adapter)`. The adapter signature is `(settings) => HTMLElement | null`. Refer to `skippy-appletv.js` for the multi-strategy template (testid → class → text), `skippy-disneyplus.js` for shadow-DOM traversal, `skippy-crunchyroll.js` for the simple `aria-label` case, `skippy-netflix.js` for the forgiving `data-uia` substring + normalized case-insensitive text fallback, `skippy-primevideo.js` for the class-substring + multi-text-label variant (Amazon's `atvwebplayersdk-*` prefix + Skip Intro / Skip intro casing variance).
 2. **Manifest** — add a `content_scripts` entry in `src/manifest.json` with the site's host patterns under `matches`, and list `helpers/storage.js`, `content/skippy-core.js`, then your new adapter under `js` (order matters: globals before consumers).
 3. **Build plugin** — add a `copyFileSync` line in `vite.config.js`'s `skippy-copy-manifest` plugin for the new content script. Content scripts are **not** Vite inputs — they're copied verbatim because MV3 content scripts can't be ES modules.
-4. **Options page** — add a checkbox row in `src/pages/options/options.html` with `data-site="<hostname>"`. The default in `SKIPPY_DEFAULTS.enabledSites` should be `true`.
+4. **Options page** — append a `{ host, label }` entry to the `SITES` array in `src/pages/options/options.js` (cards are rendered dynamically). Also add the host to `SKIPPY_DEFAULTS.enabledSites` in `src/helpers/storage.js` with a `true` default.
 
 After: `npm run validate`, reload the extension in Chrome, and test on the live site.
 

@@ -115,11 +115,12 @@ function findDisneyPlusNextEpisodeButton(settings) {
  * @returns {HTMLElement|null}
  */
 function findDisneyPlusSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["disneyplus.com"] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, "disneyplus.com");
+  if (!effective.enabled) {
     dlog("disabled", "disabled for disneyplus.com via settings");
     return null;
   }
-  return findDisneyPlusSkipOverlayButton(settings) || findDisneyPlusNextEpisodeButton(settings);
+  return findDisneyPlusSkipOverlayButton(effective) || findDisneyPlusNextEpisodeButton(effective);
 }
 
 SkippyCore.skippyLog("[Skippy/Disney+] adapter loaded on", location.href);

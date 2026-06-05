@@ -112,6 +112,40 @@ section h2 {
   margin: 8px 2px 0;
 }
 
+.site-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.site-card h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.site-card .toggle {
+  background: var(--bg);
+  margin-bottom: 6px;
+}
+
+.site-card--disabled {
+  opacity: 0.6;
+}
+
+.site-overrides {
+  margin-top: 4px;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+
+.toggle--nested {
+  font-size: 13px;
+}
+
 footer {
   margin-top: 12px;
   min-height: 18px;

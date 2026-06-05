@@ -124,11 +124,12 @@ function findAppleTvNextEpisodeButton(settings) {
  * @returns {HTMLElement|null}
  */
 function findAppleTvSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["tv.apple.com"] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, "tv.apple.com");
+  if (!effective.enabled) {
     dlog("disabled", "disabled for tv.apple.com via settings");
     return null;
   }
-  return findAppleTvSkipOverlayButton(settings) || findAppleTvNextEpisodeButton(settings);
+  return findAppleTvSkipOverlayButton(effective) || findAppleTvNextEpisodeButton(effective);
 }
 
 SkippyCore.skippyLog("[Skippy/AppleTV] adapter loaded on", location.href, "frame=", window === window.top ? "top" : "iframe");

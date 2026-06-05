@@ -102,7 +102,8 @@ function probe(testidToken, textLabels) {
  * @returns {HTMLElement|null}
  */
 function findPeacockSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["peacocktv.com"] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, "peacocktv.com");
+  if (!effective.enabled) {
     dlog("disabled", "disabled for peacocktv.com via settings");
     return null;
   }
@@ -113,26 +114,26 @@ function findPeacockSkipButton(settings) {
 
   dlog(
     "scan",
-    `scan: intro(testid=${introProbe.testidCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
+    `scan(source=${effective.source}): intro(testid=${introProbe.testidCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
       `recap(testid=${recapProbe.testidCount} text=${recapProbe.textCount} visible=${recapProbe.visibleCount}), ` +
       `next(testid=${nextProbe.testidCount} text=${nextProbe.textCount} visible=${nextProbe.visibleCount})`,
   );
 
-  if (settings.skipIntro) {
+  if (effective.skipIntro) {
     const btn = findButton("skip-intro", ["Skip Intro", "Skip intro", "SKIP INTRO"]);
     if (btn) {
       dlog("decide-intro", "→ return Skip Intro");
       return btn;
     }
   }
-  if (settings.skipRecap) {
+  if (effective.skipRecap) {
     const btn = findButton("skip-recap", ["Skip Recap", "Skip recap", "SKIP RECAP"]);
     if (btn) {
       dlog("decide-recap", "→ return Skip Recap");
       return btn;
     }
   }
-  if (settings.nextEpisode) {
+  if (effective.nextEpisode) {
     const btn = findButton("up-next", ["Up Next", "Watch Next", "Next Episode", "Play Next"]);
     if (btn) {
       dlog("decide-next", "→ return Up Next");

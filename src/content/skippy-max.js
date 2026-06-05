@@ -116,7 +116,8 @@ function probe(testidToken, textLabels) {
  * @returns {HTMLElement|null}
  */
 function findMaxSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["max.com"] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, "max.com");
+  if (!effective.enabled) {
     dlog("disabled", "disabled for max.com via settings");
     return null;
   }
@@ -128,34 +129,34 @@ function findMaxSkipButton(settings) {
 
   dlog(
     "scan",
-    `scan: intro(testid=${introProbe.testidCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
+    `scan(source=${effective.source}): intro(testid=${introProbe.testidCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
       `recap(testid=${recapProbe.testidCount} text=${recapProbe.textCount} visible=${recapProbe.visibleCount}), ` +
       `credits(testid=${creditsProbe.testidCount} text=${creditsProbe.textCount} visible=${creditsProbe.visibleCount}), ` +
       `next(testid=${nextProbe.testidCount} text=${nextProbe.textCount} visible=${nextProbe.visibleCount})`,
   );
 
-  if (settings.skipIntro) {
+  if (effective.skipIntro) {
     const btn = findButton("skipIntro", ["Skip Intro", "Skip intro", "SKIP INTRO"]);
     if (btn) {
       dlog("decide-intro", "→ return Skip Intro");
       return btn;
     }
   }
-  if (settings.skipRecap) {
+  if (effective.skipRecap) {
     const btn = findButton("skipRecap", ["Skip Recap", "Skip recap", "SKIP RECAP"]);
     if (btn) {
       dlog("decide-recap", "→ return Skip Recap");
       return btn;
     }
   }
-  if (settings.skipCredits) {
+  if (effective.skipCredits) {
     const btn = findButton("skipCredits", ["Skip Credits", "Skip credits", "SKIP CREDITS"]);
     if (btn) {
       dlog("decide-credits", "→ return Skip Credits");
       return btn;
     }
   }
-  if (settings.nextEpisode) {
+  if (effective.nextEpisode) {
     const btn = findButton("upNext", ["Up Next", "Next Episode", "Watch Next", "Play Next"]);
     if (btn) {
       dlog("decide-next", "→ return Up Next");

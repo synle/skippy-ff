@@ -120,7 +120,8 @@ function resolveHost() {
  */
 function findAmcPlusSkipButton(settings) {
   const { enabledKey } = resolveHost();
-  if (settings.enabledSites && settings.enabledSites[enabledKey] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, enabledKey);
+  if (!effective.enabled) {
     dlog("disabled", `disabled for ${enabledKey} via settings`);
     return null;
   }
@@ -131,26 +132,26 @@ function findAmcPlusSkipButton(settings) {
 
   dlog(
     "scan",
-    `scan: intro(class=${introProbe.classCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
+    `scan(source=${effective.source}): intro(class=${introProbe.classCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
       `credits(class=${creditsProbe.classCount} text=${creditsProbe.textCount} visible=${creditsProbe.visibleCount}), ` +
       `next(class=${nextProbe.classCount} text=${nextProbe.textCount} visible=${nextProbe.visibleCount})`,
   );
 
-  if (settings.skipIntro) {
+  if (effective.skipIntro) {
     const btn = findButton("skip-intro", ["Skip Intro", "Skip intro", "SKIP INTRO"]);
     if (btn) {
       dlog("decide-intro", "→ return Skip Intro");
       return btn;
     }
   }
-  if (settings.skipCredits) {
+  if (effective.skipCredits) {
     const btn = findButton("skip-credits", ["Skip Credits", "Skip credits", "SKIP CREDITS"]);
     if (btn) {
       dlog("decide-credits", "→ return Skip Credits");
       return btn;
     }
   }
-  if (settings.nextEpisode) {
+  if (effective.nextEpisode) {
     const btn = findButton("up-next", ["Up Next", "Watch Next", "Next Episode", "Play Next"]);
     if (btn) {
       dlog("decide-next", "→ return Up Next");

@@ -112,7 +112,8 @@ function findNextEpisodeButton() {
  * @returns {HTMLElement|null}
  */
 function findCrunchyrollSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["crunchyroll.com"] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, "crunchyroll.com");
+  if (!effective.enabled) {
     dlog("disabled", "disabled for crunchyroll.com via settings");
     return null;
   }
@@ -126,20 +127,20 @@ function findCrunchyrollSkipButton(settings) {
   // one line per state change, not 2/sec of noise.
   dlog(
     "scan",
-    `scan: intro(count=${skipIntro.count} visible=${skipIntro.visible}), ` +
+    `scan(source=${effective.source}): intro(count=${skipIntro.count} visible=${skipIntro.visible}), ` +
       `recap(count=${skipRecap.count} visible=${skipRecap.visible}), ` +
       `credits(count=${skipCredits.count} visible=${skipCredits.visible}), ` +
       `nextEpisodeMounted=${!!nextEpisodeBtn}`,
   );
 
-  if (settings.skipIntro && skipIntro.visible) {
+  if (effective.skipIntro && skipIntro.visible) {
     const btn = findButtonByAriaLabel("Skip Intro");
     if (btn) {
       dlog("decide-intro", "→ return Skip Intro");
       return btn;
     }
   }
-  if (settings.skipRecap && skipRecap.visible) {
+  if (effective.skipRecap && skipRecap.visible) {
     const btn = findButtonByAriaLabel("Skip Recap");
     if (btn) {
       dlog("decide-recap", "→ return Skip Recap");
@@ -150,14 +151,14 @@ function findCrunchyrollSkipButton(settings) {
   // End-of-episode dispatch — Skip Credits visibility is the trigger.
   if (skipCredits.visible) {
     const skipCreditsBtn = findButtonByAriaLabel("Skip Credits");
-    if (settings.nextEpisode) {
+    if (effective.nextEpisode) {
       if (nextEpisodeBtn) {
         dlog("decide-next", "→ return Next Episode (skipCredits visible + nextEpisode flag on)");
         return nextEpisodeBtn;
       }
       dlog("decide-next-miss", "skipCredits visible + nextEpisode flag on, but Next Episode button not found in DOM");
     }
-    if (settings.skipCredits && skipCreditsBtn) {
+    if (effective.skipCredits && skipCreditsBtn) {
       dlog("decide-credits", "→ return Skip Credits (nextEpisode disabled or Next Episode button missing)");
       return skipCreditsBtn;
     }

@@ -13,7 +13,10 @@ const {
   saveSkippySettings,
   onSkippySettingsChanged,
   clampPollIntervalMs,
+  getEffectiveSiteSettings,
   SKIPPY_DEFAULTS,
+  SKIPPY_SITE_OVERRIDE_DEFAULTS,
+  SKIPPY_FLAG_KEYS,
   SKIPPY_POLL_MIN_MS,
   SKIPPY_POLL_MAX_MS,
 } = globalThis.SkippyStorage;
@@ -190,5 +193,191 @@ describe("SkippyStorage", () => {
     expect(settings.nextEpisode).toBe(false);
     expect(settings.skipIntro).toBe(false);
     expect(settings.skipCredits).toBe(true);
+  });
+
+  // --- siteOverrides shape + persistence ----------------------------------------------
+
+  it("defaults siteOverrides to an empty object — every site follows master out of the box", () => {
+    expect(SKIPPY_DEFAULTS.siteOverrides).toEqual({});
+  });
+
+  it("ships SKIPPY_SITE_OVERRIDE_DEFAULTS with useOverride=false and every flag on", () => {
+    expect(SKIPPY_SITE_OVERRIDE_DEFAULTS).toEqual({
+      useOverride: false,
+      skipIntro: true,
+      skipRecap: true,
+      skipCredits: true,
+      nextEpisode: true,
+    });
+  });
+
+  it("exposes the canonical flag-key list — drives master + per-site iteration", () => {
+    expect(SKIPPY_FLAG_KEYS).toEqual(["skipIntro", "skipRecap", "skipCredits", "nextEpisode"]);
+  });
+
+  it("persists a per-site override record and merges defaults over partial saves", async () => {
+    await saveSkippySettings({
+      siteOverrides: {
+        "crunchyroll.com": { useOverride: true, skipIntro: false },
+      },
+    });
+    const settings = await getSkippySettings();
+    // Saved fields stick.
+    expect(settings.siteOverrides["crunchyroll.com"].useOverride).toBe(true);
+    expect(settings.siteOverrides["crunchyroll.com"].skipIntro).toBe(false);
+    // Unspecified flag fields backfill from SKIPPY_SITE_OVERRIDE_DEFAULTS so a partial
+    // record doesn't read back with `undefined` flags.
+    expect(settings.siteOverrides["crunchyroll.com"].skipRecap).toBe(true);
+    expect(settings.siteOverrides["crunchyroll.com"].skipCredits).toBe(true);
+    expect(settings.siteOverrides["crunchyroll.com"].nextEpisode).toBe(true);
+  });
+
+  // --- getEffectiveSiteSettings — the per-site override rule --------------------------
+
+  describe("getEffectiveSiteSettings", () => {
+    it("returns master flags when site has no override record", async () => {
+      const settings = await getSkippySettings();
+      const eff = getEffectiveSiteSettings(settings, "crunchyroll.com");
+      expect(eff).toEqual({
+        enabled: true,
+        skipIntro: true,
+        skipRecap: true,
+        skipCredits: true,
+        nextEpisode: true,
+        source: "master",
+      });
+    });
+
+    it("propagates master flag changes to sites that follow master", async () => {
+      await saveSkippySettings({ skipIntro: false, skipCredits: false });
+      const settings = await getSkippySettings();
+      const eff = getEffectiveSiteSettings(settings, "netflix.com");
+      expect(eff.skipIntro).toBe(false);
+      expect(eff.skipCredits).toBe(false);
+      expect(eff.skipRecap).toBe(true);
+      expect(eff.nextEpisode).toBe(true);
+      expect(eff.source).toBe("master");
+    });
+
+    it("returns all-false + source=disabled when the site is toggled off — overrides ignored", async () => {
+      await saveSkippySettings({
+        enabledSites: { "disneyplus.com": false },
+        siteOverrides: {
+          "disneyplus.com": { useOverride: true, skipIntro: true, skipRecap: true, skipCredits: true, nextEpisode: true },
+        },
+      });
+      const settings = await getSkippySettings();
+      const eff = getEffectiveSiteSettings(settings, "disneyplus.com");
+      expect(eff).toEqual({
+        enabled: false,
+        skipIntro: false,
+        skipRecap: false,
+        skipCredits: false,
+        nextEpisode: false,
+        source: "disabled",
+      });
+    });
+
+    it("returns master flags when useOverride=false even if override flags differ", async () => {
+      // Edge case: a user toggled overrides on, set their own flags, then flipped
+      // back to "Follow master". The override flag values stay in storage so toggling
+      // back to "Use my own" re-applies the user's prior choices, but while
+      // useOverride is false the master should win.
+      await saveSkippySettings({
+        skipIntro: true,
+        siteOverrides: {
+          "max.com": { useOverride: false, skipIntro: false, skipRecap: false, skipCredits: false, nextEpisode: false },
+        },
+      });
+      const settings = await getSkippySettings();
+      const eff = getEffectiveSiteSettings(settings, "max.com");
+      expect(eff.skipIntro).toBe(true);
+      expect(eff.source).toBe("master");
+    });
+
+    it("uses site flags when useOverride=true — diverges from master", async () => {
+      await saveSkippySettings({
+        skipIntro: true,
+        skipRecap: true,
+        skipCredits: true,
+        nextEpisode: true,
+        siteOverrides: {
+          "netflix.com": {
+            useOverride: true,
+            skipIntro: false,
+            skipRecap: false,
+            skipCredits: true,
+            nextEpisode: false,
+          },
+        },
+      });
+      const settings = await getSkippySettings();
+      const eff = getEffectiveSiteSettings(settings, "netflix.com");
+      expect(eff).toEqual({
+        enabled: true,
+        skipIntro: false,
+        skipRecap: false,
+        skipCredits: true,
+        nextEpisode: false,
+        source: "site",
+      });
+    });
+
+    it("isolates one site's override from another — master still applies to siblings", async () => {
+      await saveSkippySettings({
+        skipIntro: true,
+        siteOverrides: {
+          "crunchyroll.com": { useOverride: true, skipIntro: false, skipRecap: true, skipCredits: true, nextEpisode: true },
+        },
+      });
+      const settings = await getSkippySettings();
+      const overridden = getEffectiveSiteSettings(settings, "crunchyroll.com");
+      const follower = getEffectiveSiteSettings(settings, "netflix.com");
+      expect(overridden.skipIntro).toBe(false);
+      expect(overridden.source).toBe("site");
+      expect(follower.skipIntro).toBe(true);
+      expect(follower.source).toBe("master");
+    });
+
+    it("ignores a site override whose useOverride is missing / falsy — treats as follow-master", async () => {
+      await saveSkippySettings({
+        skipIntro: false,
+        siteOverrides: {
+          // No `useOverride` field at all — should not engage the site flags.
+          "tubitv.com": { skipIntro: true },
+        },
+      });
+      const settings = await getSkippySettings();
+      const eff = getEffectiveSiteSettings(settings, "tubitv.com");
+      expect(eff.skipIntro).toBe(false);
+      expect(eff.source).toBe("master");
+    });
+
+    it("falls back to master defaults when settings is undefined — defensive contract", () => {
+      const eff = getEffectiveSiteSettings(undefined, "crunchyroll.com");
+      expect(eff.enabled).toBe(true);
+      expect(eff.skipIntro).toBe(true);
+      expect(eff.source).toBe("master");
+    });
+
+    it("treats a site key not listed in enabledSites as enabled — additive defaults", () => {
+      // Hypothetical future site key that storage hasn't backfilled yet.
+      const eff = getEffectiveSiteSettings({ skipIntro: true }, "future-site.example");
+      expect(eff.enabled).toBe(true);
+      expect(eff.skipIntro).toBe(true);
+    });
+
+    it("honors an explicit master skipIntro=false through the override path too (when site flag also false)", async () => {
+      await saveSkippySettings({
+        skipIntro: false,
+        siteOverrides: {
+          "netflix.com": { useOverride: true, skipIntro: false, skipRecap: true, skipCredits: true, nextEpisode: true },
+        },
+      });
+      const settings = await getSkippySettings();
+      const eff = getEffectiveSiteSettings(settings, "netflix.com");
+      expect(eff.skipIntro).toBe(false);
+      expect(eff.source).toBe("site");
+    });
   });
 });

@@ -104,7 +104,8 @@ function probe(classToken, textLabels) {
  * @returns {HTMLElement|null}
  */
 function findParamountPlusSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["paramountplus.com"] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, "paramountplus.com");
+  if (!effective.enabled) {
     dlog("disabled", "disabled for paramountplus.com via settings");
     return null;
   }
@@ -116,34 +117,34 @@ function findParamountPlusSkipButton(settings) {
 
   dlog(
     "scan",
-    `scan: intro(class=${introProbe.classCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
+    `scan(source=${effective.source}): intro(class=${introProbe.classCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
       `recap(class=${recapProbe.classCount} text=${recapProbe.textCount} visible=${recapProbe.visibleCount}), ` +
       `credits(class=${creditsProbe.classCount} text=${creditsProbe.textCount} visible=${creditsProbe.visibleCount}), ` +
       `next(class=${nextProbe.classCount} text=${nextProbe.textCount} visible=${nextProbe.visibleCount})`,
   );
 
-  if (settings.skipIntro) {
+  if (effective.skipIntro) {
     const btn = findButton("skip-intro", ["Skip Intro", "Skip intro", "SKIP INTRO"]);
     if (btn) {
       dlog("decide-intro", "→ return Skip Intro");
       return btn;
     }
   }
-  if (settings.skipRecap) {
+  if (effective.skipRecap) {
     const btn = findButton("skip-preview", ["Skip Preview", "Skip Recap", "Skip preview", "Skip recap"]);
     if (btn) {
       dlog("decide-recap", "→ return Skip Preview/Recap");
       return btn;
     }
   }
-  if (settings.skipCredits) {
+  if (effective.skipCredits) {
     const btn = findButton("skip-credits", ["Skip Credits", "Skip credits", "SKIP CREDITS"]);
     if (btn) {
       dlog("decide-credits", "→ return Skip Credits");
       return btn;
     }
   }
-  if (settings.nextEpisode) {
+  if (effective.nextEpisode) {
     const btn = findButton("up-next", ["Up Next", "Watch Next Episode", "Next Episode", "Play Next"]);
     if (btn) {
       dlog("decide-next", "→ return Up Next");

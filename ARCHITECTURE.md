@@ -41,15 +41,24 @@ Single source of truth for settings. Wraps `chrome.storage.sync` with a defaults
 
 **Settings shape** (`SKIPPY_DEFAULTS`):
 
-| Key              | Type                   | Default | Purpose                                                                                                  |
-| ---------------- | ---------------------- | ------- | -------------------------------------------------------------------------------------------------------- |
-| `skipIntro`      | `boolean`              | `true`  | Click "Skip Intro" / equivalent when visible                                                             |
-| `skipRecap`      | `boolean`              | `true`  | Click "Skip Recap" / equivalent when visible                                                             |
-| `skipCredits`    | `boolean`              | `true`  | Click "Skip Credits" / equivalent when visible                                                           |
-| `nextEpisode`    | `boolean`              | `true`  | Click "Next Episode" / "Play Next Episode" at end-of-episode chrome (separate step from `skipCredits`)   |
-| `verboseLogging` | `boolean`              | `false` | When on, content scripts emit diagnostic logs to the DevTools console                                    |
-| `pollIntervalMs` | `number`               | `500`   | Page-scan cadence in ms; clamped to `[SKIPPY_POLL_MIN_MS=100, SKIPPY_POLL_MAX_MS=5000]` at save and read |
-| `enabledSites`   | `Record<string, bool>` | all on  | Per-site enable toggle keyed by site hostname                                                            |
+| Key              | Type                           | Default | Purpose                                                                                                                                                                                                                           |
+| ---------------- | ------------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `skipIntro`      | `boolean`                      | `true`  | Master: click "Skip Intro" / equivalent when visible                                                                                                                                                                              |
+| `skipRecap`      | `boolean`                      | `true`  | Master: click "Skip Recap" / equivalent when visible                                                                                                                                                                              |
+| `skipCredits`    | `boolean`                      | `true`  | Master: click "Skip Credits" / equivalent when visible                                                                                                                                                                            |
+| `nextEpisode`    | `boolean`                      | `true`  | Master: auto-start next episode at end-of-episode chrome (separate step from `skipCredits`)                                                                                                                                       |
+| `verboseLogging` | `boolean`                      | `false` | When on, content scripts emit diagnostic logs to the DevTools console                                                                                                                                                             |
+| `pollIntervalMs` | `number`                       | `500`   | Page-scan cadence in ms; clamped to `[SKIPPY_POLL_MIN_MS=100, SKIPPY_POLL_MAX_MS=5000]` at save and read                                                                                                                          |
+| `enabledSites`   | `Record<string, bool>`         | all on  | Per-site enable toggle keyed by site hostname                                                                                                                                                                                     |
+| `siteOverrides`  | `Record<string, SiteOverride>` | `{}`    | Optional per-site override of the four skip flags. `SiteOverride = { useOverride, skipIntro, skipRecap, skipCredits, nextEpisode }`. When `useOverride=true`, that site's adapter uses the site flags instead of the master flags |
+
+**Per-site flag resolution** is centralized in `SkippyStorage.getEffectiveSiteSettings(settings, siteKey)` so the rule lives in one place:
+
+1. `enabledSites[siteKey] === false` → every flag returns `false`, `source = "disabled"`.
+2. `siteOverrides[siteKey].useOverride === true` → returns the site's own flag values, `source = "site"`.
+3. Otherwise → returns the master flag values, `source = "master"`.
+
+Every adapter calls this helper at the top of its `findXxxSkipButton(settings)` invocation and consumes the resolved object instead of reading `settings.skipIntro` / `settings.enabledSites[host]` directly.
 
 ### `src/content/skippy-core.js`
 
@@ -117,7 +126,7 @@ Next poll tick uses the new settings
 
 `publicDir: "public"` — icons land at `dist/` root, matching paths in `manifest.json`'s `icons` field.
 
-**Adding a new content script** is a 4-file change: `src/content/skippy-<site>.js`, a `copyFileSync` in `vite.config.js`, a `content_scripts` entry in `src/manifest.json`, and an options-page checkbox row.
+**Adding a new content script** is a 4-file change: `src/content/skippy-<site>.js`, a `copyFileSync` in `vite.config.js`, a `content_scripts` entry in `src/manifest.json`, and a `SITES` entry in `src/pages/options/options.js` (cards are rendered dynamically — also extend `SKIPPY_DEFAULTS.enabledSites` in `src/helpers/storage.js`).
 
 ## Testing
 

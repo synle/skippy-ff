@@ -125,7 +125,8 @@ function probe(classToken, textLabels) {
  * @returns {HTMLElement|null}
  */
 function findPrimeVideoSkipButton(settings) {
-  if (settings.enabledSites && settings.enabledSites["primevideo.com"] === false) {
+  const effective = SkippyStorage.getEffectiveSiteSettings(settings, "primevideo.com");
+  if (!effective.enabled) {
     dlog("disabled", "disabled for primevideo.com via settings");
     return null;
   }
@@ -136,26 +137,26 @@ function findPrimeVideoSkipButton(settings) {
 
   dlog(
     "scan",
-    `scan: intro(class=${introProbe.classCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
+    `scan(source=${effective.source}): intro(class=${introProbe.classCount} text=${introProbe.textCount} visible=${introProbe.visibleCount}), ` +
       `recap(class=${recapProbe.classCount} text=${recapProbe.textCount} visible=${recapProbe.visibleCount}), ` +
       `next(class=${nextProbe.classCount} text=${nextProbe.textCount} visible=${nextProbe.visibleCount})`,
   );
 
-  if (settings.skipIntro) {
+  if (effective.skipIntro) {
     const btn = findButton("skipelement", ["Skip Intro", "Skip intro"]);
     if (btn) {
       dlog("decide-intro", "→ return Skip Intro");
       return btn;
     }
   }
-  if (settings.skipRecap) {
+  if (effective.skipRecap) {
     const btn = findButton("skiprecap", ["Skip Recap", "Skip recap"]);
     if (btn) {
       dlog("decide-recap", "→ return Skip Recap");
       return btn;
     }
   }
-  if (settings.nextEpisode) {
+  if (effective.nextEpisode) {
     const btn = findButton("nextupcard", ["Next Episode", "Next episode", "Next Up", "Next up"]);
     if (btn) {
       dlog("decide-next", "→ return Next Up");

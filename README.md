@@ -68,7 +68,9 @@ skippy-ff/
   <img src="docs/screenshots/options.png" alt="Skippy-FF options page — checkboxes for each skip type, per-site toggles, poll interval, and verbose logging" width="380" />
 </p>
 
-The popup (also reachable via `chrome://extensions/` → Skippy-FF → Details → Extension options) groups settings into **What to skip**, **Sites**, **Advanced** (poll interval), and **Debugging** (verbose logging).
+The popup (also reachable via `chrome://extensions/` → Skippy-FF → Details → Extension options) groups settings into **Master Settings**, **Sites**, **Advanced** (poll interval), and **Debugging** (verbose logging).
+
+Each site card has an **Enable** toggle, a **Follow master settings** toggle, and (when not following master) its own copy of the four skip flags. Disabling a site short-circuits every flag for that site. Enabled + following master → the master flags apply. Enabled + not following master → the site's own flags apply.
 
 ### Defaults
 
@@ -77,10 +79,11 @@ The popup (also reachable via `chrome://extensions/` → Skippy-FF → Details �
 | `skipIntro`      | `true`  | Click "Skip Intro" when shown                                                                                                                                                                              |
 | `skipRecap`      | `true`  | Click "Skip Recap" when shown                                                                                                                                                                              |
 | `skipCredits`    | `true`  | Click "Skip Credits" when shown                                                                                                                                                                            |
-| `nextEpisode`    | `true`  | Click the post-credits "Next Episode" / "Play Next Episode" button                                                                                                                                         |
+| `nextEpisode`    | `true`  | Auto-start the next episode (post-credits "Next Episode" / "Play Next Episode" button)                                                                                                                     |
 | `verboseLogging` | `false` | Emit `[Skippy]` / `[Skippy/<site>]` diagnostics to DevTools                                                                                                                                                |
 | `pollIntervalMs` | `500`   | Page-scan cadence; clamped to 100–5000 ms                                                                                                                                                                  |
 | `enabledSites`   | all on  | Per-site enable toggle (`crunchyroll.com`, `disneyplus.com`, `tv.apple.com`, `netflix.com`, `primevideo.com`, `max.com`, `paramountplus.com`, `peacocktv.com`, `tubitv.com`, `amcplus.com`, `shudder.com`) |
+| `siteOverrides`  | `{}`    | Optional per-site override: `{ [host]: { useOverride, skipIntro, skipRecap, skipCredits, nextEpisode } }`. `useOverride=true` makes that site use its own flags instead of the master ones                 |
 
 Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome profiles.
 
@@ -92,4 +95,4 @@ Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome pr
 
 ## Roadmap
 
-- Per-site skip-flag overrides
+_(open for ideas)_
