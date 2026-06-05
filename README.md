@@ -4,7 +4,7 @@
 
 Auto-skip intros, recaps, and credits while you binge. SponsorBlock for streaming services.
 
-Currently supports **Crunchyroll**, **Disney+** (also covers **Hulu** — Hulu's catalog now streams through the Disney+ player after the catalog merger), **Apple TV**, **Netflix**, **Prime Video**, **Max** (HBO Max), **Paramount+**, and **Peacock**.
+Currently supports **Crunchyroll**, **Disney+** (also covers **Hulu** — Hulu's catalog now streams through the Disney+ player after the catalog merger), **Apple TV**, **Netflix**, **Prime Video**, **Max** (HBO Max), **Paramount+**, **Peacock**, and **Tubi**.
 
 ## How it works
 
@@ -47,7 +47,8 @@ skippy-ff/
 │   │   ├── skippy-primevideo.js       # Amazon Prime Video site adapter
 │   │   ├── skippy-max.js              # Max (HBO Max) site adapter
 │   │   ├── skippy-paramountplus.js    # Paramount+ site adapter
-│   │   └── skippy-peacock.js          # Peacock site adapter
+│   │   ├── skippy-peacock.js          # Peacock site adapter
+│   │   └── skippy-tubi.js             # Tubi site adapter
 │   └── pages/options/                 # Settings page (also used as popup)
 │       ├── options.html
 │       ├── options.css
@@ -70,15 +71,15 @@ The popup (also reachable via `chrome://extensions/` → Skippy-FF → Details �
 
 ### Defaults
 
-| Flag             | Default | Description                                                                                                                                                    |
-| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `skipIntro`      | `true`  | Click "Skip Intro" when shown                                                                                                                                  |
-| `skipRecap`      | `true`  | Click "Skip Recap" when shown                                                                                                                                  |
-| `skipCredits`    | `true`  | Click "Skip Credits" when shown                                                                                                                                |
-| `nextEpisode`    | `true`  | Click the post-credits "Next Episode" / "Play Next Episode" button                                                                                             |
-| `verboseLogging` | `false` | Emit `[Skippy]` / `[Skippy/<site>]` diagnostics to DevTools                                                                                                    |
-| `pollIntervalMs` | `500`   | Page-scan cadence; clamped to 100–5000 ms                                                                                                                      |
-| `enabledSites`   | all on  | Per-site enable toggle (`crunchyroll.com`, `disneyplus.com`, `tv.apple.com`, `netflix.com`, `primevideo.com`, `max.com`, `paramountplus.com`, `peacocktv.com`) |
+| Flag             | Default | Description                                                                                                                                                                  |
+| ---------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `skipIntro`      | `true`  | Click "Skip Intro" when shown                                                                                                                                                |
+| `skipRecap`      | `true`  | Click "Skip Recap" when shown                                                                                                                                                |
+| `skipCredits`    | `true`  | Click "Skip Credits" when shown                                                                                                                                              |
+| `nextEpisode`    | `true`  | Click the post-credits "Next Episode" / "Play Next Episode" button                                                                                                           |
+| `verboseLogging` | `false` | Emit `[Skippy]` / `[Skippy/<site>]` diagnostics to DevTools                                                                                                                  |
+| `pollIntervalMs` | `500`   | Page-scan cadence; clamped to 100–5000 ms                                                                                                                                    |
+| `enabledSites`   | all on  | Per-site enable toggle (`crunchyroll.com`, `disneyplus.com`, `tv.apple.com`, `netflix.com`, `primevideo.com`, `max.com`, `paramountplus.com`, `peacocktv.com`, `tubitv.com`) |
 
 Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome profiles.
 
