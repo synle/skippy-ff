@@ -25,6 +25,7 @@ const SKIPPY_DEFAULTS = {
     "primevideo.com": true,
     "max.com": true,
     "paramountplus.com": true,
+    "peacocktv.com": true,
   },
 };
 

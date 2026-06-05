@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Skippy",
   "version": "0.15.0",
-  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+ (also Hulu content), Apple TV, Netflix, Prime Video, Max, and Paramount+. Created by Sy Le.",
+  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+ (also Hulu content), Apple TV, Netflix, Prime Video, Max, Paramount+, and Peacock. Created by Sy Le.",
   "author": "Sy Le",
   "homepage_url": "https://github.com/synle/skippy-ff",
   "icons": {
@@ -60,6 +60,12 @@
     {
       "matches": ["https://www.paramountplus.com/*"],
       "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-paramountplus.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://www.peacocktv.com/*"],
+      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-peacock.js"],
       "run_at": "document_idle",
       "all_frames": false
     }
