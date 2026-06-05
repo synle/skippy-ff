@@ -24,6 +24,7 @@ const SKIPPY_DEFAULTS = {
     "netflix.com": true,
     "primevideo.com": true,
     "max.com": true,
+    "paramountplus.com": true,
   },
 };
 

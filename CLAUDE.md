@@ -6,7 +6,7 @@ Read `ARCHITECTURE.md` for the system map and `DEV.md` for the development workf
 
 ## Project (one-liner)
 
-Skippy is a Chrome MV3 extension that auto-clicks "Skip Intro / Recap / Credits" buttons on Crunchyroll, Disney+ (also covers Hulu content since the catalogs merged), Apple TV, Netflix, Prime Video, and Max. Plain JS + Vite 6, no frameworks.
+Skippy is a Chrome MV3 extension that auto-clicks "Skip Intro / Recap / Credits" buttons on Crunchyroll, Disney+ (also covers Hulu content since the catalogs merged), Apple TV, Netflix, Prime Video, Max, and Paramount+. Plain JS + Vite 6, no frameworks.
 
 There is no separate Hulu adapter — Hulu's catalog now streams through Disney+'s player, so the Disney+ adapter covers it. Don't open a Hulu-only adapter.
 

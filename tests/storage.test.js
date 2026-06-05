@@ -122,6 +122,7 @@ describe("SkippyStorage", () => {
     expect(SKIPPY_DEFAULTS.enabledSites["netflix.com"]).toBe(true);
     expect(SKIPPY_DEFAULTS.enabledSites["primevideo.com"]).toBe(true);
     expect(SKIPPY_DEFAULTS.enabledSites["max.com"]).toBe(true);
+    expect(SKIPPY_DEFAULTS.enabledSites["paramountplus.com"]).toBe(true);
   });
 
   it("does not leak mutations to SKIPPY_DEFAULTS across reads", async () => {
