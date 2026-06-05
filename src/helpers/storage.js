@@ -23,6 +23,7 @@ const SKIPPY_DEFAULTS = {
     "tv.apple.com": true,
     "netflix.com": true,
     "primevideo.com": true,
+    "max.com": true,
   },
 };
 

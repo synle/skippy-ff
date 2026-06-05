@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Skippy",
   "version": "0.15.0",
-  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+ (also Hulu content), Apple TV, Netflix, and Prime Video. Created by Sy Le.",
+  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+ (also Hulu content), Apple TV, Netflix, Prime Video, and Max. Created by Sy Le.",
   "author": "Sy Le",
   "homepage_url": "https://github.com/synle/skippy-ff",
   "icons": {
@@ -48,6 +48,12 @@
         "https://watch.amazon.com/*"
       ],
       "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-primevideo.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://play.max.com/*", "https://www.max.com/*"],
+      "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-max.js"],
       "run_at": "document_idle",
       "all_frames": false
     }
