@@ -115,11 +115,12 @@ describe("SkippyStorage", () => {
     expect(SKIPPY_DEFAULTS.skipCredits).toBe(true);
   });
 
-  it("enables all four supported sites by default", () => {
+  it("enables every supported site by default", () => {
     expect(SKIPPY_DEFAULTS.enabledSites["crunchyroll.com"]).toBe(true);
     expect(SKIPPY_DEFAULTS.enabledSites["disneyplus.com"]).toBe(true);
     expect(SKIPPY_DEFAULTS.enabledSites["tv.apple.com"]).toBe(true);
     expect(SKIPPY_DEFAULTS.enabledSites["netflix.com"]).toBe(true);
+    expect(SKIPPY_DEFAULTS.enabledSites["primevideo.com"]).toBe(true);
   });
 
   it("does not leak mutations to SKIPPY_DEFAULTS across reads", async () => {

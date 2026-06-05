@@ -74,6 +74,7 @@ Adapter strategies trend from strict (per-site `aria-label` exact match on Crunc
 - Uses unstable class names (Svelte hash churn on Apple TV — primary selector is `data-testid`; class + text are fallbacks).
 - Embeds the player in a same-origin iframe (Apple TV — manifest entry uses `all_frames: true`).
 - Renders skip prompts as plain `<button>` elements identified by `data-uia` token (Netflix `player-skip-intro`, `player-skip-recap`, `next-episode-seamless-button`). Adapter probes the `data-uia` substring AND a normalized, case-insensitive text match in parallel so either drifting independently keeps clicks firing.
+- Identifies skip prompts by a class-name substring (Prime Video's `atvwebplayersdk-skipelement-*`, `atvwebplayersdk-nextupcard-*`) with multiple text-label variants accepted in parallel ("Skip Intro" / "Skip intro" / "Next Up"). Two strategies in parallel — Amazon has reshuffled the class prefix more than once.
 
 Adapters expose a `__skippy()` console inspector for manual debugging from DevTools, regardless of the verbose-logging setting.
 
