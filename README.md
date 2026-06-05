@@ -4,7 +4,7 @@
 
 Auto-skip intros, recaps, and credits while you binge. SponsorBlock for streaming services.
 
-Currently supports **Crunchyroll**, **Disney+** (which now includes Hulu content), **Apple TV**, and **Netflix**.
+Currently supports **Crunchyroll**, **Disney+** (also covers **Hulu** — Hulu's catalog now streams through the Disney+ player after the catalog merger), **Apple TV**, and **Netflix**.
 
 ## How it works
 

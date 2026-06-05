@@ -6,6 +6,8 @@ System map for Skippy. Read alongside `DEV.md` (development workflow) and `CLAUD
 
 Skippy is a Chrome Extension (Manifest V3) that auto-clicks "Skip Intro / Recap / Credits" buttons on streaming services. There is no background service worker — each supported site loads a content script that polls the DOM for a visible skip button and clicks it. Settings live in `chrome.storage.sync`. The options page is the only UI surface (also used as the action popup).
 
+Hulu's catalog now streams through Disney+'s player after the catalog merger, so the Disney+ adapter covers Hulu content. There is no standalone `hulu.com` adapter.
+
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │  Streaming-site tab (e.g. tv.apple.com, www.crunchyroll.com)           │
