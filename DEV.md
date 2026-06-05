@@ -51,14 +51,29 @@ The manifest's `name` is suffixed with `(DEV)` in watch mode so you can tell whi
 
 ## Adding a new streaming site
 
-Four-step ritual. See `ARCHITECTURE.md` § Build pipeline for the why.
+Three touches + one shared list. See `ARCHITECTURE.md` § Build pipeline for the why.
 
-1. **Adapter** — create `src/content/skippy-<site>.js`. End with `SkippyCore.skippyStart(adapter)`. The adapter signature is `(settings) => HTMLElement | null`. Refer to `skippy-appletv.js` for the multi-strategy template (testid → class → text), `skippy-disneyplus.js` for shadow-DOM traversal, `skippy-crunchyroll.js` for the simple `aria-label` case, `skippy-netflix.js` for the forgiving `data-uia` substring + normalized case-insensitive text fallback, `skippy-primevideo.js` for the class-substring + multi-text-label variant (Amazon's `atvwebplayersdk-*` prefix + Skip Intro / Skip intro casing variance).
+1. **Adapter** — create `src/content/skippy-<site>.js`. End with `SkippyCore.skippyStart(adapter)`. The adapter signature is `(settings) => HTMLElement | null` and should resolve the effective flags via `SkippyStorage.getEffectiveSiteSettings(settings, "<host>")` at the top. Refer to `skippy-appletv.js` for the multi-strategy template (testid → class → text), `skippy-disneyplus.js` for shadow-DOM traversal, `skippy-crunchyroll.js` for the simple `aria-label` case, `skippy-netflix.js` for the forgiving `data-uia` substring + normalized case-insensitive text fallback, `skippy-primevideo.js` for the class-substring + multi-text-label variant (Amazon's `atvwebplayersdk-*` prefix + Skip Intro / Skip intro casing variance).
 2. **Manifest** — add a `content_scripts` entry in `src/manifest.json` with the site's host patterns under `matches`, and list `helpers/storage.js`, `content/skippy-core.js`, then your new adapter under `js` (order matters: globals before consumers).
 3. **Build plugin** — add a `copyFileSync` line in `vite.config.js`'s `skippy-copy-manifest` plugin for the new content script. Content scripts are **not** Vite inputs — they're copied verbatim because MV3 content scripts can't be ES modules.
-4. **Options page** — append a `{ host, label }` entry to the `SITES` array in `src/pages/options/options.js` (cards are rendered dynamically). Also add the host to `SKIPPY_DEFAULTS.enabledSites` in `src/helpers/storage.js` with a `true` default.
+4. **Centralized site list** — append a `{ host, label, urlPatterns }` entry to `SKIPPY_SITES` in `src/helpers/storage.js` and add the host to `SKIPPY_DEFAULTS.enabledSites` with `true`. The `urlPatterns` array must mirror the manifest `matches`. Both the options-page site cards and the background service worker's context menu are generated from this list — no extra UI wiring.
 
 After: `npm run validate`, reload the extension in Chrome, and test on the live site.
+
+## Right-click context menu
+
+A background service worker (`src/background.js`) registers a **Skippy** submenu on every right-click for supported streaming pages. Items are generated per-site from `SKIPPY_SITES` and reflect the live `getEffectiveSiteSettings` resolution:
+
+- **Enable on `<Site>`** — toggles `enabledSites[host]`.
+- **Follow master settings** — inverse of `siteOverrides[host].useOverride`.
+- **Skip Intro / Skip Recap / Skip Credits / Auto start next episode** — toggling any flag flips `useOverride` true on the site (same behavior as the options page card).
+- **Open Skippy settings…** — calls `chrome.runtime.openOptionsPage()`.
+
+When the site is disabled, the four flag rows and "Follow master settings" are hidden; only Enable + Open settings remain.
+
+The menu is rebuilt from scratch on `onInstalled`, `onStartup`, and every `chrome.storage.onChanged.sync` event — `chrome.contextMenus` is append-only, so `removeAll` + recreate is the simplest way to keep checkboxes in sync after a settings save from any surface (popup, options page, another tab's menu).
+
+To debug context-menu issues, inspect the service worker: `chrome://extensions/` → Skippy → **Inspect views: service worker**. `[Skippy] context menu …` warnings land in that console.
 
 ## Debugging
 

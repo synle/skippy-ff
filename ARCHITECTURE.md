@@ -4,7 +4,7 @@ System map for Skippy. Read alongside `DEV.md` (development workflow) and `CLAUD
 
 ## High-level
 
-Skippy is a Chrome Extension (Manifest V3) that auto-clicks "Skip Intro / Recap / Credits" buttons on streaming services. There is no background service worker — each supported site loads a content script that polls the DOM for a visible skip button and clicks it. Settings live in `chrome.storage.sync`. The options page is the only UI surface (also used as the action popup).
+Skippy is a Chrome Extension (Manifest V3) that auto-clicks "Skip Intro / Recap / Credits" buttons on streaming services. Each supported site loads a content script that polls the DOM for a visible skip button and clicks it. A background service worker registers a right-click context menu so per-site toggles are reachable without opening the options page. Settings live in `chrome.storage.sync` and are mutated from three surfaces: the options page (also used as the action popup), the context menu, and any future call site.
 
 Hulu's catalog now streams through Disney+'s player after the catalog merger, so the Disney+ adapter covers Hulu content. There is no standalone `hulu.com` adapter.
 
@@ -30,6 +30,20 @@ Hulu's catalog now streams through Disney+'s player after the catalog merger, so
 │                                                                        │
 │   options.js  ───import──►  helpers/storage.js                         │
 │   (ES module)                (side-effect global init)                 │
+└────────────────────────────────────────────────────────────────────────┘
+                │ chrome.storage.onChanged
+                ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│  Background service worker (background.js, classic)                    │
+│                                                                        │
+│   importScripts("helpers/storage.js", "helpers/menu.js")               │
+│         │                                                              │
+│         ▼                                                              │
+│   rebuildContextMenus() → chrome.contextMenus.create(payload[])        │
+│         │                                                              │
+│         ▼                                                              │
+│   chrome.contextMenus.onClicked → parseSkippyMenuItemId(id) →          │
+│   SkippyStorage.saveSkippySettings(patch)                              │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -89,7 +103,21 @@ Adapters expose a `__skippy()` console inspector for manual debugging from DevTo
 
 ### `src/pages/options/`
 
-Single-page settings UI. Vite is the bundler — `options.html` is the only HTML input. `options.js` is an ES module that `import`s `helpers/storage.js` for side-effect global init, then binds checkboxes to storage via `SkippyStorage`. The same page is reused as the action popup.
+Single-page settings UI. Vite is the bundler — `options.html` is the only HTML input. `options.js` is an ES module that `import`s `helpers/storage.js` for side-effect global init, then renders one card per `SkippyStorage.SKIPPY_SITES` entry and binds checkboxes to storage via `SkippyStorage`. The same page is reused as the action popup.
+
+### `src/helpers/menu.js`
+
+Pure helper for the background service worker. `buildSkippyContextMenuItems(settings, site)` returns the array of `chrome.contextMenus.create` payloads for one site — order matters because Chrome renders in creation order. `parseSkippyMenuItemId(id)` resolves a click back to `{ host, action, flag? }`. Exposed via `globalThis.SkippyMenu`. Extracted into its own helper so the menu shape can be unit-tested without the SW runtime.
+
+### `src/background.js`
+
+Background service worker. Classic SW (not `type: "module"`) that `importScripts("helpers/storage.js", "helpers/menu.js")` to pick up `SkippyStorage` + `SkippyMenu`, then:
+
+1. Rebuilds the context-menu tree on `onInstalled`, `onStartup`, and any `chrome.storage.onChanged.sync` event.
+2. Routes `contextMenus.onClicked` through `parseSkippyMenuItemId` and writes the resulting patch back through `SkippyStorage.saveSkippySettings`. Toggling any flag row sets `siteOverrides[host].useOverride = true` so the user's click has an observable effect (same rule as the options-page card).
+3. Opens the options page on the "Open Skippy settings…" item via `chrome.runtime.openOptionsPage()`.
+
+The menu is per-site and scoped via each item's `documentUrlPatterns` (mirrored from `SKIPPY_SITES[*].urlPatterns`), so Chrome only surfaces the "Skippy" submenu on pages where the corresponding content script runs.
 
 ## Data flow
 
@@ -121,12 +149,12 @@ Next poll tick uses the new settings
 
 `vite.config.js` defines two custom plugins:
 
-1. **`skippy-copy-manifest`** — Reads `src/manifest.json`, rewrites `version` from `package.json` (and appends `(DEV)` to the name in `--watch` mode), writes to `dist/manifest.json`. Also `copyFileSync`s every content script and `helpers/storage.js` verbatim into `dist/content/` and `dist/helpers/` — these are not Vite inputs.
+1. **`skippy-copy-manifest`** — Reads `src/manifest.json`, rewrites `version` from `package.json` (and appends `(DEV)` to the name in `--watch` mode), writes to `dist/manifest.json`. Also `copyFileSync`s every content script, `helpers/storage.js`, `helpers/menu.js`, and `background.js` verbatim into `dist/` — these are not Vite inputs.
 2. **`skippy-move-html`** — Vite emits HTML into `dist/src/pages/…`. This plugin moves them to `dist/pages/…` and rewrites root-style asset paths (`/chunks/…`, `/assets/…`) to relative so they resolve under `chrome-extension://`.
 
 `publicDir: "public"` — icons land at `dist/` root, matching paths in `manifest.json`'s `icons` field.
 
-**Adding a new content script** is a 4-file change: `src/content/skippy-<site>.js`, a `copyFileSync` in `vite.config.js`, a `content_scripts` entry in `src/manifest.json`, and a `SITES` entry in `src/pages/options/options.js` (cards are rendered dynamically — also extend `SKIPPY_DEFAULTS.enabledSites` in `src/helpers/storage.js`).
+**Adding a new streaming site** touches 3 files plus `SKIPPY_SITES`: `src/content/skippy-<site>.js`, a `copyFileSync` in `vite.config.js`, a `content_scripts` entry in `src/manifest.json`, and a `{ host, label, urlPatterns }` entry in `src/helpers/storage.js`'s `SKIPPY_SITES` (also extend `SKIPPY_DEFAULTS.enabledSites`). The options-page card and the context-menu items are generated from `SKIPPY_SITES` — no further UI wiring.
 
 ## Testing
 

@@ -8,7 +8,7 @@ Currently supports **Crunchyroll**, **Disney+** (also covers **Hulu** — Hulu's
 
 ## How it works
 
-A content script runs on supported streaming sites. It polls for visible skip buttons — matched by `aria-label`, `data-uia`, `data-testid`, or normalized button text (case-insensitive, whitespace-collapsed) depending on the site — and clicks them automatically. A per-button cooldown prevents double-clicks. Each skip type is a flag — toggle them in the popup.
+A content script runs on supported streaming sites. It polls for visible skip buttons — matched by `aria-label`, `data-uia`, `data-testid`, or normalized button text (case-insensitive, whitespace-collapsed) depending on the site — and clicks them automatically. A per-button cooldown prevents double-clicks. Each skip type is a flag — toggle them in the popup, the right-click **Skippy** context menu on the streaming page, or the options page.
 
 ## Install (unpacked, for development)
 
@@ -37,7 +37,10 @@ npm run build
 skippy-ff/
 ├── src/
 │   ├── manifest.json                  # MV3 manifest
-│   ├── helpers/storage.js             # chrome.storage.sync wrapper
+│   ├── background.js                  # Background SW — registers right-click context menu
+│   ├── helpers/
+│   │   ├── storage.js                 # chrome.storage.sync wrapper + SKIPPY_SITES
+│   │   └── menu.js                    # Context-menu shape (pure helper for background SW)
 │   ├── content/
 │   │   ├── skippy-core.js             # visibility + click helpers, polling loop
 │   │   ├── skippy-crunchyroll.js      # Crunchyroll site adapter

@@ -17,6 +17,7 @@ const {
   SKIPPY_DEFAULTS,
   SKIPPY_SITE_OVERRIDE_DEFAULTS,
   SKIPPY_FLAG_KEYS,
+  SKIPPY_SITES,
   SKIPPY_POLL_MIN_MS,
   SKIPPY_POLL_MAX_MS,
 } = globalThis.SkippyStorage;
@@ -213,6 +214,30 @@ describe("SkippyStorage", () => {
 
   it("exposes the canonical flag-key list — drives master + per-site iteration", () => {
     expect(SKIPPY_FLAG_KEYS).toEqual(["skipIntro", "skipRecap", "skipCredits", "nextEpisode"]);
+  });
+
+  // --- SKIPPY_SITES canonical site list ----------------------------------------------
+
+  it("exposes a SKIPPY_SITES entry for every supported host in enabledSites defaults", () => {
+    const siteHosts = SKIPPY_SITES.map((s) => s.host).sort();
+    const enabledHosts = Object.keys(SKIPPY_DEFAULTS.enabledSites).sort();
+    expect(siteHosts).toEqual(enabledHosts);
+  });
+
+  it("requires every SKIPPY_SITES entry to have host, label, and at least one urlPattern", () => {
+    for (const site of SKIPPY_SITES) {
+      expect(typeof site.host).toBe("string");
+      expect(site.host.length).toBeGreaterThan(0);
+      expect(typeof site.label).toBe("string");
+      expect(site.label.length).toBeGreaterThan(0);
+      expect(Array.isArray(site.urlPatterns)).toBe(true);
+      expect(site.urlPatterns.length).toBeGreaterThan(0);
+      for (const pattern of site.urlPatterns) {
+        // Chrome match-pattern minimum: scheme://host/path. Reject obvious typos like a
+        // missing trailing /* (would only match the bare root) or a missing scheme.
+        expect(pattern).toMatch(/^https?:\/\/[^/]+\/.*$/);
+      }
+    }
   });
 
   it("persists a per-site override record and merges defaults over partial saves", async () => {

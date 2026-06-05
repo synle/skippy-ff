@@ -99,10 +99,14 @@ export default defineConfig({
         copyFileSync(resolve(__dirname, "src/content/skippy-tubi.js"), join(contentDir, "skippy-tubi.js"));
         copyFileSync(resolve(__dirname, "src/content/skippy-amcplus.js"), join(contentDir, "skippy-amcplus.js"));
 
-        // Storage helper (shared between content scripts and options page; loaded as classic script).
+        // Storage + menu helpers (shared between content scripts, options page, and background SW; loaded as classic scripts).
         const helpersDir = resolve(__dirname, "dist/helpers");
         mkdirSync(helpersDir, { recursive: true });
         copyFileSync(resolve(__dirname, "src/helpers/storage.js"), join(helpersDir, "storage.js"));
+        copyFileSync(resolve(__dirname, "src/helpers/menu.js"), join(helpersDir, "menu.js"));
+
+        // Background service worker — loaded as a classic SW; pulls in helpers via importScripts.
+        copyFileSync(resolve(__dirname, "src/background.js"), resolve(__dirname, "dist/background.js"));
       },
     },
     {

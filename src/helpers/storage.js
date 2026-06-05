@@ -82,6 +82,47 @@ function clampPollIntervalMs(value) {
   return Math.max(SKIPPY_POLL_MIN_MS, Math.min(SKIPPY_POLL_MAX_MS, Math.round(n)));
 }
 
+/**
+ * Canonical list of supported streaming sites. Shared between the options page (renders one
+ * card per entry) and the background service worker (registers one context-menu tree per
+ * entry, scoped via `documentUrlPatterns`).
+ *
+ * - `host` — key used in `enabledSites` / `siteOverrides`. Hostname stripped of subdomain
+ *   variance so a single key matches every URL pattern below it.
+ * - `label` — human-facing name. Shown on the options card and in the context-menu items.
+ * - `urlPatterns` — Chrome match-pattern array. Must mirror the corresponding
+ *   `content_scripts[].matches` entry in `manifest.json` so the context menu shows up on
+ *   exactly the pages where the content script runs.
+ *
+ * **Drift check:** if a site's `urlPatterns` here diverges from `manifest.json`, the context
+ * menu will misfire (appear on pages with no content script, or vice versa). Updating one
+ * without the other is the common bug; rule 6 in `CLAUDE.md` lists the files to touch
+ * together when adding a new site.
+ * @type {ReadonlyArray<{host: string, label: string, urlPatterns: ReadonlyArray<string>}>}
+ */
+const SKIPPY_SITES = [
+  { host: "crunchyroll.com", label: "Crunchyroll", urlPatterns: ["https://www.crunchyroll.com/*", "https://beta.crunchyroll.com/*"] },
+  { host: "disneyplus.com", label: "Disney+", urlPatterns: ["https://www.disneyplus.com/*"] },
+  { host: "tv.apple.com", label: "Apple TV", urlPatterns: ["https://tv.apple.com/*"] },
+  { host: "netflix.com", label: "Netflix", urlPatterns: ["https://www.netflix.com/*"] },
+  {
+    host: "primevideo.com",
+    label: "Prime Video",
+    urlPatterns: [
+      "https://www.primevideo.com/*",
+      "https://www.amazon.com/gp/video/*",
+      "https://www.amazon.com/Amazon-Video/*",
+      "https://watch.amazon.com/*",
+    ],
+  },
+  { host: "max.com", label: "Max", urlPatterns: ["https://play.max.com/*", "https://www.max.com/*"] },
+  { host: "paramountplus.com", label: "Paramount+", urlPatterns: ["https://www.paramountplus.com/*"] },
+  { host: "peacocktv.com", label: "Peacock", urlPatterns: ["https://www.peacocktv.com/*"] },
+  { host: "tubitv.com", label: "Tubi", urlPatterns: ["https://tubitv.com/*", "https://www.tubitv.com/*"] },
+  { host: "amcplus.com", label: "AMC+", urlPatterns: ["https://www.amcplus.com/*", "https://amcplus.com/*"] },
+  { host: "shudder.com", label: "Shudder", urlPatterns: ["https://www.shudder.com/*", "https://shudder.com/*"] },
+];
+
 /** Storage key for all Skippy settings. */
 const SKIPPY_STORAGE_KEY = "skippySettings";
 
@@ -211,6 +252,7 @@ globalThis.SkippyStorage = {
   SKIPPY_DEFAULTS,
   SKIPPY_SITE_OVERRIDE_DEFAULTS,
   SKIPPY_FLAG_KEYS,
+  SKIPPY_SITES,
   SKIPPY_POLL_MIN_MS,
   SKIPPY_POLL_MAX_MS,
 };

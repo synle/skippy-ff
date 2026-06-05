@@ -5,26 +5,6 @@ import "../../helpers/storage.js";
 /** Top-level skip flags that appear on the master card. Mirrored in `SKIPPY_FLAG_KEYS`. */
 const FLAG_IDS = ["skipIntro", "skipRecap", "skipCredits", "nextEpisode", "verboseLogging"];
 
-/**
- * Per-site card metadata. Order = rendered order. `host` matches the key used in
- * `enabledSites` / `siteOverrides`. `label` is the human-facing name. Adding a new site is
- * still a four-file change (see `DEV.md`); this list is one of the four touches.
- * @type {ReadonlyArray<{host: string, label: string}>}
- */
-const SITES = [
-  { host: "crunchyroll.com", label: "Crunchyroll" },
-  { host: "disneyplus.com", label: "Disney+" },
-  { host: "tv.apple.com", label: "Apple TV" },
-  { host: "netflix.com", label: "Netflix" },
-  { host: "primevideo.com", label: "Prime Video" },
-  { host: "max.com", label: "Max" },
-  { host: "paramountplus.com", label: "Paramount+" },
-  { host: "peacocktv.com", label: "Peacock" },
-  { host: "tubitv.com", label: "Tubi" },
-  { host: "amcplus.com", label: "AMC+" },
-  { host: "shudder.com", label: "Shudder" },
-];
-
 /** Labels for the four skip-flag toggles on each site card. Same order as `SKIPPY_FLAG_KEYS`. */
 const SITE_FLAG_LABELS = {
   skipIntro: "Skip Intro",
@@ -238,10 +218,11 @@ async function init() {
     });
   }
 
-  // Render per-site cards.
+  // Render per-site cards from the centralized SKIPPY_SITES list (shared with the
+  // background service worker so the context menu and the options page can't drift).
   const container = /** @type {HTMLElement | null} */ (document.getElementById("site-cards"));
   if (container) {
-    for (const site of SITES) {
+    for (const site of SkippyStorage.SKIPPY_SITES) {
       const card = buildSiteCard(site);
       container.appendChild(card);
       bindSiteCard(card, site, settings);

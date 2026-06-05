@@ -11,9 +11,11 @@ export default [
       sourceType: "module",
       globals: {
         ...globals.browser,
+        ...globals.serviceworker,
         chrome: "readonly",
         SkippyStorage: "readonly",
         SkippyCore: "readonly",
+        SkippyMenu: "readonly",
       },
     },
     rules: {
