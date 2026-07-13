@@ -157,8 +157,8 @@ function skippyClick(el) {
   // 1. Caller already resolved a real click target — fire on it directly.
   if (isClickTarget) {
     try {
-      el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, composed: true, view: window }));
-      el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, composed: true, view: window }));
+      // el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, composed: true, view: window }));
+      // el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, composed: true, view: window }));
       el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window }));
       el.click();
       skippyLog("[Skippy] click via direct on", tag, el);
