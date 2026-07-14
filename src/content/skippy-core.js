@@ -159,7 +159,7 @@ function skippyClick(el) {
     try {
       // el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, composed: true, view: window }));
       // el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, composed: true, view: window }));
-      el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window }));
+      // el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window }));
       el.click();
       skippyLog("[Skippy] click via direct on", tag, el);
       return;
@@ -197,7 +197,7 @@ function skippyClick(el) {
 
   // 4. Last-resort composed MouseEvent + native click on the original element.
   try {
-    el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window }));
+    // el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window }));
     el.click();
     skippyLog("[Skippy] click via fallback composed + native", el);
   } catch (err) {
