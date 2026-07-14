@@ -6,6 +6,16 @@
 importScripts("helpers/storage.js", "helpers/menu.js");
 
 /**
+ * In-flight rebuild guard. `rebuildContextMenus` is called from multiple event sources
+ * (`onInstalled`, `onStartup`, `storage.onChanged`, initial load) that can fire
+ * simultaneously. Two concurrent `removeAll` + `create` sequences race and produce
+ * duplicate ids. Chaining through `pendingRebuild` serializes rebuilds so only one
+ * `removeAll` → create loop runs at a time.
+ * @type {Promise<void>}
+ */
+let pendingRebuild = Promise.resolve();
+
+/**
  * Rebuild every Skippy context-menu item from scratch.
  *
  * `chrome.contextMenus.create` is append-only and per-item `update` can't add or remove
@@ -16,25 +26,31 @@ importScripts("helpers/storage.js", "helpers/menu.js");
  * Per-item failures are caught and logged, not rethrown — Chrome will reject duplicate ids
  * if a previous `removeAll` is still settling, and we don't want one stale id to take down
  * the rest of the rebuild.
+ *
+ * Callers are chained via `pendingRebuild` so concurrent triggers serialize into a single
+ * queue rather than racing.
  * @returns {Promise<void>}
  */
-async function rebuildContextMenus() {
-  await new Promise((resolve) => chrome.contextMenus.removeAll(resolve));
-  const settings = await SkippyStorage.getSkippySettings();
-  for (const site of SkippyStorage.SKIPPY_SITES) {
-    const items = SkippyMenu.buildSkippyContextMenuItems(settings, site);
-    for (const payload of items) {
-      try {
-        chrome.contextMenus.create(payload);
-      } catch (err) {
-        console.warn("[Skippy] failed to create context menu item", payload.id, err);
+function rebuildContextMenus() {
+  pendingRebuild = pendingRebuild.then(async () => {
+    await new Promise((resolve) => chrome.contextMenus.removeAll(resolve));
+    const settings = await SkippyStorage.getSkippySettings();
+    for (const site of SkippyStorage.SKIPPY_SITES) {
+      const items = SkippyMenu.buildSkippyContextMenuItems(settings, site);
+      for (const payload of items) {
+        try {
+          chrome.contextMenus.create(payload);
+        } catch (err) {
+          console.warn("[Skippy] failed to create context menu item", payload.id, err);
+        }
       }
     }
-  }
+  });
+  return pendingRebuild;
 }
 
 /**
- * Handle a click on any Skippy context-menu item. Resolves the click to an action via
+ * Handle a click on any Skippy context-menu item. Resolves the click to a action via
  * `SkippyMenu.parseSkippyMenuItemId`, then mutates settings accordingly. Toggling any flag
  * row implicitly flips `useOverride` true so the click has an observable effect (mirroring
  * the options-page card behavior).
