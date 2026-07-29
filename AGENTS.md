@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS
 
 Guidance for Claude Code (claude.ai/code) when working in this repository.
 

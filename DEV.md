@@ -1,6 +1,6 @@
 # Development guide
 
-How to work on Skippy locally. Read alongside `ARCHITECTURE.md` (system map) and `CLAUDE.md` (project rules).
+How to work on Skippy locally. Read alongside `ARCHITECTURE.md` (system map) and `AGENTS` (project rules).
 
 ## Prereqs
 

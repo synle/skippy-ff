@@ -94,7 +94,7 @@ Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome pr
 
 - `ARCHITECTURE.md` — system map (components, data flow, build pipeline, CI/CD).
 - `DEV.md` — local development workflow, adding a new site, debugging guide.
-- `CLAUDE.md` — project rules.
+- `AGENTS` — project rules.
 
 ## Roadmap
 

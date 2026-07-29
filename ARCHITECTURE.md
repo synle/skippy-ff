@@ -1,6 +1,6 @@
 # Architecture
 
-System map for Skippy. Read alongside `DEV.md` (development workflow) and `CLAUDE.md` (project-specific rules).
+System map for Skippy. Read alongside `DEV.md` (development workflow) and `AGENTS` (project-specific rules).
 
 ## High-level
 
