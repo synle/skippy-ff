@@ -31,7 +31,9 @@ function normText(el) {
  * @returns {HTMLElement[]} All clickable button-like elements on the page.
  */
 function collectButtons() {
-  return /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll('button, [role="button"]')));
+  return /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll('button, [role="button"]'))
+  );
 }
 
 /**
@@ -51,7 +53,9 @@ function collectButtons() {
  * @returns {HTMLElement|null} The matched button, or null.
  */
 function findButton(classToken, textLabels) {
-  const byClass = /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll(`[class*="${classToken}"]`)));
+  const byClass = /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll(`[class*="${classToken}"]`))
+  );
   const candidates = /** @type {HTMLElement[]} */ ([]);
   for (const el of byClass) {
     if (el.tagName === "BUTTON" || el.tagName === "A" || el.getAttribute("role") === "button") {
@@ -69,7 +73,11 @@ function findButton(classToken, textLabels) {
   }
   for (const node of candidates) {
     if (SkippyCore.skippyIsPresent(node)) {
-      dlog(`fallback-${classToken}`, `no fully-visible candidate for "${textLabels[0]}", using present fallback`, node);
+      dlog(
+        `fallback-${classToken}`,
+        `no fully-visible candidate for "${textLabels[0]}", using present fallback`,
+        node,
+      );
       return node;
     }
   }
@@ -92,7 +100,12 @@ function probe(classToken, textLabels) {
   const all = new Set([.../** @type {HTMLElement[]} */ (byClass), ...byText]);
   let visibleCount = 0;
   for (const el of all) if (SkippyCore.skippyIsVisible(el)) visibleCount++;
-  return { label: textLabels[0], classCount: byClass.length, textCount: byText.length, visibleCount };
+  return {
+    label: textLabels[0],
+    classCount: byClass.length,
+    textCount: byText.length,
+    visibleCount,
+  };
 }
 
 /**

@@ -10,7 +10,12 @@ vi.stubGlobal("chrome", chrome);
 await import("../src/helpers/storage.js");
 await import("../src/helpers/menu.js");
 
-const { buildSkippyContextMenuItems, parseSkippyMenuItemId, SKIPPY_MENU_FLAG_LABELS, SKIPPY_MENU_PARENT_TITLE } = globalThis.SkippyMenu;
+const {
+  buildSkippyContextMenuItems,
+  parseSkippyMenuItemId,
+  SKIPPY_MENU_FLAG_LABELS,
+  SKIPPY_MENU_PARENT_TITLE,
+} = globalThis.SkippyMenu;
 const { getSkippySettings, saveSkippySettings, SKIPPY_SITES } = globalThis.SkippyStorage;
 
 const crunchyroll = SKIPPY_SITES.find((s) => s.host === "crunchyroll.com");
@@ -58,7 +63,11 @@ describe("buildSkippyContextMenuItems", () => {
     const items = buildSkippyContextMenuItems(settings, crunchyroll);
 
     const titles = items.filter((i) => i.title).map((i) => i.title);
-    expect(titles).toEqual([SKIPPY_MENU_PARENT_TITLE, "Enable on Crunchyroll", "Open Skippy settings…"]);
+    expect(titles).toEqual([
+      SKIPPY_MENU_PARENT_TITLE,
+      "Enable on Crunchyroll",
+      "Open Skippy settings…",
+    ]);
     expect(findItem(items, ":enable").checked).toBe(false);
     expect(items.filter((i) => i.type === "separator")).toHaveLength(0);
     // Flag items must not be present.
@@ -139,15 +148,24 @@ describe("buildSkippyContextMenuItems", () => {
 
 describe("parseSkippyMenuItemId", () => {
   it("parses the enable action", () => {
-    expect(parseSkippyMenuItemId("skippy:crunchyroll.com:enable")).toEqual({ host: "crunchyroll.com", action: "enable" });
+    expect(parseSkippyMenuItemId("skippy:crunchyroll.com:enable")).toEqual({
+      host: "crunchyroll.com",
+      action: "enable",
+    });
   });
 
   it("parses the follow action", () => {
-    expect(parseSkippyMenuItemId("skippy:netflix.com:follow")).toEqual({ host: "netflix.com", action: "follow" });
+    expect(parseSkippyMenuItemId("skippy:netflix.com:follow")).toEqual({
+      host: "netflix.com",
+      action: "follow",
+    });
   });
 
   it("parses the options action", () => {
-    expect(parseSkippyMenuItemId("skippy:max.com:options")).toEqual({ host: "max.com", action: "options" });
+    expect(parseSkippyMenuItemId("skippy:max.com:options")).toEqual({
+      host: "max.com",
+      action: "options",
+    });
   });
 
   it("parses a flag action with the flag key intact", () => {

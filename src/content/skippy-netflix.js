@@ -34,7 +34,9 @@ function normText(el) {
  * @returns {HTMLElement[]} All clickable button-like elements on the page.
  */
 function collectButtons() {
-  return /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll('button, [role="button"]')));
+  return /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll('button, [role="button"]'))
+  );
 }
 
 /**
@@ -56,7 +58,9 @@ function collectButtons() {
  * @returns {HTMLElement|null} The matched button, or null.
  */
 function findButton(uiaToken, textLabel) {
-  const byUia = /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll(`[data-uia*="${uiaToken}"]`)));
+  const byUia = /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll(`[data-uia*="${uiaToken}"]`))
+  );
   const candidates = /** @type {HTMLElement[]} */ ([]);
   for (const el of byUia) if (!candidates.includes(el)) candidates.push(el);
 
@@ -74,7 +78,11 @@ function findButton(uiaToken, textLabel) {
   // drops the opacity + pointer-events gates.
   for (const node of candidates) {
     if (SkippyCore.skippyIsPresent(node)) {
-      dlog(`fallback-${uiaToken}`, `no fully-visible candidate for "${textLabel}", using present fallback`, node);
+      dlog(
+        `fallback-${uiaToken}`,
+        `no fully-visible candidate for "${textLabel}", using present fallback`,
+        node,
+      );
       return node;
     }
   }

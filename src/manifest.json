@@ -79,7 +79,12 @@
       "all_frames": false
     },
     {
-      "matches": ["https://www.amcplus.com/*", "https://amcplus.com/*", "https://www.shudder.com/*", "https://shudder.com/*"],
+      "matches": [
+        "https://www.amcplus.com/*",
+        "https://amcplus.com/*",
+        "https://www.shudder.com/*",
+        "https://shudder.com/*"
+      ],
       "js": ["helpers/storage.js", "content/skippy-core.js", "content/skippy-amcplus.js"],
       "run_at": "document_idle",
       "all_frames": false

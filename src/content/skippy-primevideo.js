@@ -35,7 +35,9 @@ function normText(el) {
  * @returns {HTMLElement[]} All clickable button-like elements on the page.
  */
 function collectButtons() {
-  return /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll('button, [role="button"]')));
+  return /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll('button, [role="button"]'))
+  );
 }
 
 /**
@@ -60,7 +62,9 @@ function collectButtons() {
  * @returns {HTMLElement|null} The matched button, or null.
  */
 function findButton(classToken, textLabels) {
-  const byClass = /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll(`[class*="${classToken}"]`)));
+  const byClass = /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll(`[class*="${classToken}"]`))
+  );
   const candidates = /** @type {HTMLElement[]} */ ([]);
   for (const el of byClass) {
     // Only keep clickable elements — class-substring match can hit container divs.
@@ -82,7 +86,11 @@ function findButton(classToken, textLabels) {
   // but drops the opacity + pointer-events gates.
   for (const node of candidates) {
     if (SkippyCore.skippyIsPresent(node)) {
-      dlog(`fallback-${classToken}`, `no fully-visible candidate for "${textLabels[0]}", using present fallback`, node);
+      dlog(
+        `fallback-${classToken}`,
+        `no fully-visible candidate for "${textLabels[0]}", using present fallback`,
+        node,
+      );
       return node;
     }
   }
@@ -106,7 +114,12 @@ function probe(classToken, textLabels) {
   const all = new Set([.../** @type {HTMLElement[]} */ (byClass), ...byText]);
   let visibleCount = 0;
   for (const el of all) if (SkippyCore.skippyIsVisible(el)) visibleCount++;
-  return { label: textLabels[0], classCount: byClass.length, textCount: byText.length, visibleCount };
+  return {
+    label: textLabels[0],
+    classCount: byClass.length,
+    textCount: byText.length,
+    visibleCount,
+  };
 }
 
 /**

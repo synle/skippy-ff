@@ -29,7 +29,9 @@ function normText(el) {
  * @returns {HTMLElement[]} All clickable button-like elements on the page.
  */
 function collectButtons() {
-  return /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll('button, [role="button"]')));
+  return /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll('button, [role="button"]'))
+  );
 }
 
 /**
@@ -46,7 +48,9 @@ function collectButtons() {
  * @returns {HTMLElement|null} The matched button, or null.
  */
 function findButton(testidToken, textLabels) {
-  const byTestId = /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll(`[data-testid*="${testidToken}"]`)));
+  const byTestId = /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll(`[data-testid*="${testidToken}"]`))
+  );
   const candidates = /** @type {HTMLElement[]} */ ([]);
   for (const el of byTestId) {
     if (el.tagName === "BUTTON" || el.tagName === "A" || el.getAttribute("role") === "button") {
@@ -64,7 +68,11 @@ function findButton(testidToken, textLabels) {
   }
   for (const node of candidates) {
     if (SkippyCore.skippyIsPresent(node)) {
-      dlog(`fallback-${testidToken}`, `no fully-visible candidate for "${textLabels[0]}", using present fallback`, node);
+      dlog(
+        `fallback-${testidToken}`,
+        `no fully-visible candidate for "${textLabels[0]}", using present fallback`,
+        node,
+      );
       return node;
     }
   }
@@ -87,7 +95,12 @@ function probe(testidToken, textLabels) {
   const all = new Set([.../** @type {HTMLElement[]} */ (byTestId), ...byText]);
   let visibleCount = 0;
   for (const el of all) if (SkippyCore.skippyIsVisible(el)) visibleCount++;
-  return { label: textLabels[0], testidCount: byTestId.length, textCount: byText.length, visibleCount };
+  return {
+    label: textLabels[0],
+    testidCount: byTestId.length,
+    textCount: byText.length,
+    visibleCount,
+  };
 }
 
 /**

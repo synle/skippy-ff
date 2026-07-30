@@ -170,7 +170,9 @@ function skippyClick(el) {
 
   // 2. Open shadow root with an inner button? Drill in and recurse.
   try {
-    const shadowBtn = /** @type {HTMLElement|null} */ (el.shadowRoot?.querySelector("button, [role='button']") || null);
+    const shadowBtn = /** @type {HTMLElement|null} */ (
+      el.shadowRoot?.querySelector("button, [role='button']") || null
+    );
     if (shadowBtn) {
       skippyLog("[Skippy] click via shadow inner button", shadowBtn);
       skippyClick(shadowBtn);
@@ -225,7 +227,8 @@ function skippyClick(el) {
  * @returns {void}
  */
 function skippyStart(findSkipButton, options = {}) {
-  const fallbackIntervalMs = options.intervalMs ?? SkippyStorage.SKIPPY_DEFAULTS.pollIntervalMs ?? 500;
+  const fallbackIntervalMs =
+    options.intervalMs ?? SkippyStorage.SKIPPY_DEFAULTS.pollIntervalMs ?? 500;
   const cooldownMs = options.cooldownMs ?? 2000;
   const lastClickedAt = new WeakMap();
 
@@ -251,13 +254,16 @@ function skippyStart(findSkipButton, options = {}) {
     let intervalMs = fallbackIntervalMs;
     try {
       if (settings) {
-        intervalMs = SkippyStorage.clampPollIntervalMs(settings.pollIntervalMs ?? fallbackIntervalMs);
+        intervalMs = SkippyStorage.clampPollIntervalMs(
+          settings.pollIntervalMs ?? fallbackIntervalMs,
+        );
         const button = findSkipButton(settings);
         if (button) {
           const last = lastClickedAt.get(button) || 0;
           if (Date.now() - last >= cooldownMs) {
             lastClickedAt.set(button, Date.now());
-            const label = button.getAttribute("aria-label") || (button.textContent || "").trim().slice(0, 80);
+            const label =
+              button.getAttribute("aria-label") || (button.textContent || "").trim().slice(0, 80);
             // Click event is the load-bearing user-visible action — log even when verboseLogging is off
             // so a user troubleshooting "did Skippy actually skip?" sees a one-liner without re-enabling
             // the full verbose stream.

@@ -109,10 +109,16 @@ function buildSiteCard(site) {
  */
 function bindSiteCard(card, site, settings) {
   const flagKeys = SkippyStorage.SKIPPY_FLAG_KEYS;
-  const enableInput = /** @type {HTMLInputElement} */ (card.querySelector('input[data-role="enable"]'));
-  const followInput = /** @type {HTMLInputElement} */ (card.querySelector('input[data-role="follow-master"]'));
+  const enableInput = /** @type {HTMLInputElement} */ (
+    card.querySelector('input[data-role="enable"]')
+  );
+  const followInput = /** @type {HTMLInputElement} */ (
+    card.querySelector('input[data-role="follow-master"]')
+  );
   const overridesEl = /** @type {HTMLDivElement} */ (card.querySelector('[data-role="overrides"]'));
-  const flagInputs = /** @type {NodeListOf<HTMLInputElement>} */ (card.querySelectorAll("input[data-flag]"));
+  const flagInputs = /** @type {NodeListOf<HTMLInputElement>} */ (
+    card.querySelectorAll("input[data-flag]")
+  );
 
   const enabled = settings.enabledSites[site.host] !== false;
   const record = settings.siteOverrides[site.host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
@@ -141,7 +147,8 @@ function bindSiteCard(card, site, settings) {
 
   followInput.addEventListener("change", async () => {
     const current = await SkippyStorage.getSkippySettings();
-    const existing = current.siteOverrides[site.host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
+    const existing =
+      current.siteOverrides[site.host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
     await SkippyStorage.saveSkippySettings({
       siteOverrides: {
         ...current.siteOverrides,
@@ -156,7 +163,8 @@ function bindSiteCard(card, site, settings) {
     const key = /** @type {keyof typeof SITE_FLAG_LABELS} */ (input.dataset.flag);
     input.addEventListener("change", async () => {
       const current = await SkippyStorage.getSkippySettings();
-      const existing = current.siteOverrides[site.host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
+      const existing =
+        current.siteOverrides[site.host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
       const patch = { ...existing, [key]: input.checked };
       // Touching any individual override flag implies the user wants the override on —
       // otherwise the toggle would silently no-op. Flip `useOverride` true on first nudge.
@@ -207,7 +215,9 @@ async function init() {
 
   // Hydrate the poll-interval number input. Round-trip through clampPollIntervalMs so
   // a user typing an out-of-range value snaps it to the supported floor / ceiling on blur.
-  const pollInput = /** @type {HTMLInputElement | null} */ (document.getElementById("pollIntervalMs"));
+  const pollInput = /** @type {HTMLInputElement | null} */ (
+    document.getElementById("pollIntervalMs")
+  );
   if (pollInput) {
     pollInput.value = String(settings.pollIntervalMs);
     pollInput.addEventListener("change", async () => {

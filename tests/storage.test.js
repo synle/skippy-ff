@@ -288,7 +288,13 @@ describe("SkippyStorage", () => {
       await saveSkippySettings({
         enabledSites: { "disneyplus.com": false },
         siteOverrides: {
-          "disneyplus.com": { useOverride: true, skipIntro: true, skipRecap: true, skipCredits: true, nextEpisode: true },
+          "disneyplus.com": {
+            useOverride: true,
+            skipIntro: true,
+            skipRecap: true,
+            skipCredits: true,
+            nextEpisode: true,
+          },
         },
       });
       const settings = await getSkippySettings();
@@ -311,7 +317,13 @@ describe("SkippyStorage", () => {
       await saveSkippySettings({
         skipIntro: true,
         siteOverrides: {
-          "max.com": { useOverride: false, skipIntro: false, skipRecap: false, skipCredits: false, nextEpisode: false },
+          "max.com": {
+            useOverride: false,
+            skipIntro: false,
+            skipRecap: false,
+            skipCredits: false,
+            nextEpisode: false,
+          },
         },
       });
       const settings = await getSkippySettings();
@@ -352,7 +364,13 @@ describe("SkippyStorage", () => {
       await saveSkippySettings({
         skipIntro: true,
         siteOverrides: {
-          "crunchyroll.com": { useOverride: true, skipIntro: false, skipRecap: true, skipCredits: true, nextEpisode: true },
+          "crunchyroll.com": {
+            useOverride: true,
+            skipIntro: false,
+            skipRecap: true,
+            skipCredits: true,
+            nextEpisode: true,
+          },
         },
       });
       const settings = await getSkippySettings();
@@ -396,7 +414,13 @@ describe("SkippyStorage", () => {
       await saveSkippySettings({
         skipIntro: false,
         siteOverrides: {
-          "netflix.com": { useOverride: true, skipIntro: false, skipRecap: true, skipCredits: true, nextEpisode: true },
+          "netflix.com": {
+            useOverride: true,
+            skipIntro: false,
+            skipRecap: true,
+            skipCredits: true,
+            nextEpisode: true,
+          },
         },
       });
       const settings = await getSkippySettings();

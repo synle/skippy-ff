@@ -29,7 +29,9 @@ function normText(el) {
  * @returns {HTMLElement[]} All clickable button-like elements on the page.
  */
 function collectButtons() {
-  return /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll('button, [role="button"]')));
+  return /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll('button, [role="button"]'))
+  );
 }
 
 /**
@@ -48,7 +50,9 @@ function collectButtons() {
  * @returns {HTMLElement|null} The matched button, or null.
  */
 function findButton(classToken, textLabels) {
-  const byClass = /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll(`[class*="${classToken}"]`)));
+  const byClass = /** @type {HTMLElement[]} */ (
+    Array.from(document.querySelectorAll(`[class*="${classToken}"]`))
+  );
   const candidates = /** @type {HTMLElement[]} */ ([]);
   for (const el of byClass) {
     if (el.tagName === "BUTTON" || el.tagName === "A" || el.getAttribute("role") === "button") {
@@ -66,7 +70,11 @@ function findButton(classToken, textLabels) {
   }
   for (const node of candidates) {
     if (SkippyCore.skippyIsPresent(node)) {
-      dlog(`fallback-${classToken}`, `no fully-visible candidate for "${textLabels[0]}", using present fallback`, node);
+      dlog(
+        `fallback-${classToken}`,
+        `no fully-visible candidate for "${textLabels[0]}", using present fallback`,
+        node,
+      );
       return node;
     }
   }
@@ -89,7 +97,12 @@ function probe(classToken, textLabels) {
   const all = new Set([.../** @type {HTMLElement[]} */ (byClass), ...byText]);
   let visibleCount = 0;
   for (const el of all) if (SkippyCore.skippyIsVisible(el)) visibleCount++;
-  return { label: textLabels[0], classCount: byClass.length, textCount: byText.length, visibleCount };
+  return {
+    label: textLabels[0],
+    classCount: byClass.length,
+    textCount: byText.length,
+    visibleCount,
+  };
 }
 
 /**
@@ -111,9 +124,19 @@ function findParamountPlusSkipButton(settings) {
   }
 
   const introProbe = probe("skip-intro", ["Skip Intro", "Skip intro", "SKIP INTRO"]);
-  const recapProbe = probe("skip-preview", ["Skip Preview", "Skip Recap", "Skip preview", "Skip recap"]);
+  const recapProbe = probe("skip-preview", [
+    "Skip Preview",
+    "Skip Recap",
+    "Skip preview",
+    "Skip recap",
+  ]);
   const creditsProbe = probe("skip-credits", ["Skip Credits", "Skip credits", "SKIP CREDITS"]);
-  const nextProbe = probe("up-next", ["Up Next", "Watch Next Episode", "Next Episode", "Play Next"]);
+  const nextProbe = probe("up-next", [
+    "Up Next",
+    "Watch Next Episode",
+    "Next Episode",
+    "Play Next",
+  ]);
 
   dlog(
     "scan",
@@ -131,7 +154,12 @@ function findParamountPlusSkipButton(settings) {
     }
   }
   if (effective.skipRecap) {
-    const btn = findButton("skip-preview", ["Skip Preview", "Skip Recap", "Skip preview", "Skip recap"]);
+    const btn = findButton("skip-preview", [
+      "Skip Preview",
+      "Skip Recap",
+      "Skip preview",
+      "Skip recap",
+    ]);
     if (btn) {
       dlog("decide-recap", "→ return Skip Preview/Recap");
       return btn;
@@ -145,7 +173,12 @@ function findParamountPlusSkipButton(settings) {
     }
   }
   if (effective.nextEpisode) {
-    const btn = findButton("up-next", ["Up Next", "Watch Next Episode", "Next Episode", "Play Next"]);
+    const btn = findButton("up-next", [
+      "Up Next",
+      "Watch Next Episode",
+      "Next Episode",
+      "Play Next",
+    ]);
     if (btn) {
       dlog("decide-next", "→ return Up Next");
       return btn;

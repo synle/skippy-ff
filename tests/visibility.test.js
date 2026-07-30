@@ -195,7 +195,9 @@ describe("SkippyCore.skippyIsPresent", () => {
   });
 
   it("returns true on the Crunchyroll idle-fade combo (opacity:0 + pointer-events:none)", () => {
-    expect(skippyIsPresent(mkButton({ style: { opacity: "0", pointerEvents: "none" } }))).toBe(true);
+    expect(skippyIsPresent(mkButton({ style: { opacity: "0", pointerEvents: "none" } }))).toBe(
+      true,
+    );
   });
 
   it("returns false when aria-hidden='true' on self — author-intent gate kept even on permissive", () => {

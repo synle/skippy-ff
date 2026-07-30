@@ -55,7 +55,9 @@ function findDisneyPlusSkipOverlayButton(settings) {
     if (!visible) continue;
 
     // Prefer the inner <button> inside an open shadow root — that's the real click target.
-    const inner = /** @type {HTMLElement|null} */ (host.shadowRoot?.querySelector("button, [role='button']") || null);
+    const inner = /** @type {HTMLElement|null} */ (
+      host.shadowRoot?.querySelector("button, [role='button']") || null
+    );
     const target = inner || /** @type {HTMLElement} */ (host);
 
     const label = (
@@ -68,7 +70,10 @@ function findDisneyPlusSkipOverlayButton(settings) {
       .toLowerCase()
       .trim();
 
-    dlog("found-skip", `visible <skip-button> found, label="${label || "(empty)"}", inner=${inner ? "yes" : "no"}`);
+    dlog(
+      "found-skip",
+      `visible <skip-button> found, label="${label || "(empty)"}", inner=${inner ? "yes" : "no"}`,
+    );
 
     if (label.includes("intro")) {
       if (settings.skipIntro) return target;
@@ -141,7 +146,9 @@ globalThis.__skippy = function __skippy() {
       shadowInner: h.shadowRoot?.querySelector("button, [role='button']") || null,
       textContent: (h.textContent || "").slice(0, 80),
     })),
-    nextEpisode: next ? { visible: SkippyCore.skippyIsVisible(next), rect: next.getBoundingClientRect() } : null,
+    nextEpisode: next
+      ? { visible: SkippyCore.skippyIsVisible(next), rect: next.getBoundingClientRect() }
+      : null,
   };
   // Inspector is invoked manually from DevTools — always emit, regardless of verboseLogging.
   console.log("[Skippy/Disney+] snapshot", snapshot);

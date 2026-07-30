@@ -87,17 +87,50 @@ export default defineConfig({
         // Content scripts (verbatim — Chrome MV3 content scripts are not ES modules).
         const contentDir = resolve(__dirname, "dist/content");
         mkdirSync(contentDir, { recursive: true });
-        copyFileSync(resolve(__dirname, "src/content/skippy-core.js"), join(contentDir, "skippy-core.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-crunchyroll.js"), join(contentDir, "skippy-crunchyroll.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-disneyplus.js"), join(contentDir, "skippy-disneyplus.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-appletv.js"), join(contentDir, "skippy-appletv.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-netflix.js"), join(contentDir, "skippy-netflix.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-primevideo.js"), join(contentDir, "skippy-primevideo.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-max.js"), join(contentDir, "skippy-max.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-paramountplus.js"), join(contentDir, "skippy-paramountplus.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-peacock.js"), join(contentDir, "skippy-peacock.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-tubi.js"), join(contentDir, "skippy-tubi.js"));
-        copyFileSync(resolve(__dirname, "src/content/skippy-amcplus.js"), join(contentDir, "skippy-amcplus.js"));
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-core.js"),
+          join(contentDir, "skippy-core.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-crunchyroll.js"),
+          join(contentDir, "skippy-crunchyroll.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-disneyplus.js"),
+          join(contentDir, "skippy-disneyplus.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-appletv.js"),
+          join(contentDir, "skippy-appletv.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-netflix.js"),
+          join(contentDir, "skippy-netflix.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-primevideo.js"),
+          join(contentDir, "skippy-primevideo.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-max.js"),
+          join(contentDir, "skippy-max.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-paramountplus.js"),
+          join(contentDir, "skippy-paramountplus.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-peacock.js"),
+          join(contentDir, "skippy-peacock.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-tubi.js"),
+          join(contentDir, "skippy-tubi.js"),
+        );
+        copyFileSync(
+          resolve(__dirname, "src/content/skippy-amcplus.js"),
+          join(contentDir, "skippy-amcplus.js"),
+        );
 
         // Storage + menu helpers (shared between content scripts, options page, and background SW; loaded as classic scripts).
         const helpersDir = resolve(__dirname, "dist/helpers");
@@ -106,7 +139,10 @@ export default defineConfig({
         copyFileSync(resolve(__dirname, "src/helpers/menu.js"), join(helpersDir, "menu.js"));
 
         // Background service worker — loaded as a classic SW; pulls in helpers via importScripts.
-        copyFileSync(resolve(__dirname, "src/background.js"), resolve(__dirname, "dist/background.js"));
+        copyFileSync(
+          resolve(__dirname, "src/background.js"),
+          resolve(__dirname, "dist/background.js"),
+        );
       },
     },
     {
@@ -133,7 +169,10 @@ export default defineConfig({
           content = content.replace(/href="\/chunks\/([^"]+)"/g, 'href="../../chunks/$1"');
           content = content.replace(/href="\/assets\/([^"]+)"/g, 'href="../../assets/$1"');
           // Rewrite reference to the verbatim-copied storage helper.
-          content = content.replace(/src="\.\.\/\.\.\/helpers\/storage\.js"/g, 'src="../../helpers/storage.js"');
+          content = content.replace(
+            /src="\.\.\/\.\.\/helpers\/storage\.js"/g,
+            'src="../../helpers/storage.js"',
+          );
           writeFileSync(destFile, content);
         }
 

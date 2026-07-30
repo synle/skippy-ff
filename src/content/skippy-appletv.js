@@ -59,7 +59,10 @@ function findAppleTvSkipOverlayButton(settings) {
   const allButtons = deepQueryAll(document, "button");
   const byText = allButtons.filter((b) => (b.textContent || "").trim().toLowerCase() === "skip");
 
-  dlog("scan-skip", `scan: testid=${byTestId.length}, class=${byClass.length}, text="Skip"=${byText.length}, allBtns=${allButtons.length}`);
+  dlog(
+    "scan-skip",
+    `scan: testid=${byTestId.length}, class=${byClass.length}, text="Skip"=${byText.length}, allBtns=${allButtons.length}`,
+  );
 
   // Dedup while preserving order: testid > class > text.
   const candidates = /** @type {Element[]} */ ([]);
@@ -70,7 +73,11 @@ function findAppleTvSkipOverlayButton(settings) {
   for (const node of candidates) {
     const visible = SkippyCore.skippyIsVisible(node);
     const present = SkippyCore.skippyIsPresent(node);
-    dlog(`cand-${candidates.indexOf(node)}`, `candidate visible=${visible} present=${present}`, node);
+    dlog(
+      `cand-${candidates.indexOf(node)}`,
+      `candidate visible=${visible} present=${present}`,
+      node,
+    );
     if (visible) return /** @type {HTMLElement} */ (node);
   }
   // Permissive fallback: present-but-low-opacity (Apple TV may fade controls while still wired).
@@ -104,7 +111,10 @@ function findAppleTvNextEpisodeButton(settings) {
   const allButtons = deepQueryAll(document, "button");
   for (const btn of allButtons) {
     const text = (btn.textContent || "").trim().toLowerCase();
-    if (text.includes("play next episode") && !candidates.includes(/** @type {HTMLButtonElement} */ (btn))) {
+    if (
+      text.includes("play next episode") &&
+      !candidates.includes(/** @type {HTMLButtonElement} */ (btn))
+    ) {
       candidates.push(/** @type {HTMLButtonElement} */ (btn));
     }
   }
@@ -132,7 +142,12 @@ function findAppleTvSkipButton(settings) {
   return findAppleTvSkipOverlayButton(effective) || findAppleTvNextEpisodeButton(effective);
 }
 
-SkippyCore.skippyLog("[Skippy/AppleTV] adapter loaded on", location.href, "frame=", window === window.top ? "top" : "iframe");
+SkippyCore.skippyLog(
+  "[Skippy/AppleTV] adapter loaded on",
+  location.href,
+  "frame=",
+  window === window.top ? "top" : "iframe",
+);
 
 /**
  * Live inspector — paste `__skippy()` in the console to dump current state.

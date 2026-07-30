@@ -101,7 +101,11 @@ function clampPollIntervalMs(value) {
  * @type {ReadonlyArray<{host: string, label: string, urlPatterns: ReadonlyArray<string>}>}
  */
 const SKIPPY_SITES = [
-  { host: "crunchyroll.com", label: "Crunchyroll", urlPatterns: ["https://www.crunchyroll.com/*", "https://beta.crunchyroll.com/*"] },
+  {
+    host: "crunchyroll.com",
+    label: "Crunchyroll",
+    urlPatterns: ["https://www.crunchyroll.com/*", "https://beta.crunchyroll.com/*"],
+  },
   { host: "disneyplus.com", label: "Disney+", urlPatterns: ["https://www.disneyplus.com/*"] },
   { host: "tv.apple.com", label: "Apple TV", urlPatterns: ["https://tv.apple.com/*"] },
   { host: "netflix.com", label: "Netflix", urlPatterns: ["https://www.netflix.com/*"] },
@@ -115,12 +119,32 @@ const SKIPPY_SITES = [
       "https://watch.amazon.com/*",
     ],
   },
-  { host: "max.com", label: "Max", urlPatterns: ["https://play.max.com/*", "https://www.max.com/*"] },
-  { host: "paramountplus.com", label: "Paramount+", urlPatterns: ["https://www.paramountplus.com/*"] },
+  {
+    host: "max.com",
+    label: "Max",
+    urlPatterns: ["https://play.max.com/*", "https://www.max.com/*"],
+  },
+  {
+    host: "paramountplus.com",
+    label: "Paramount+",
+    urlPatterns: ["https://www.paramountplus.com/*"],
+  },
   { host: "peacocktv.com", label: "Peacock", urlPatterns: ["https://www.peacocktv.com/*"] },
-  { host: "tubitv.com", label: "Tubi", urlPatterns: ["https://tubitv.com/*", "https://www.tubitv.com/*"] },
-  { host: "amcplus.com", label: "AMC+", urlPatterns: ["https://www.amcplus.com/*", "https://amcplus.com/*"] },
-  { host: "shudder.com", label: "Shudder", urlPatterns: ["https://www.shudder.com/*", "https://shudder.com/*"] },
+  {
+    host: "tubitv.com",
+    label: "Tubi",
+    urlPatterns: ["https://tubitv.com/*", "https://www.tubitv.com/*"],
+  },
+  {
+    host: "amcplus.com",
+    label: "AMC+",
+    urlPatterns: ["https://www.amcplus.com/*", "https://amcplus.com/*"],
+  },
+  {
+    host: "shudder.com",
+    label: "Shudder",
+    urlPatterns: ["https://www.shudder.com/*", "https://shudder.com/*"],
+  },
 ];
 
 /** Storage key for all Skippy settings. */
@@ -218,7 +242,14 @@ function getEffectiveSiteSettings(settings, siteKey) {
   const enabledSites = s.enabledSites || {};
   const enabled = enabledSites[siteKey] !== false;
   if (!enabled) {
-    return { enabled: false, skipIntro: false, skipRecap: false, skipCredits: false, nextEpisode: false, source: "disabled" };
+    return {
+      enabled: false,
+      skipIntro: false,
+      skipRecap: false,
+      skipCredits: false,
+      nextEpisode: false,
+      source: "disabled",
+    };
   }
   const overrides = s.siteOverrides || {};
   const record = overrides[siteKey];

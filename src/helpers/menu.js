@@ -47,8 +47,12 @@ const SKIPPY_MENU_PARENT_TITLE = "Skippy";
  * @returns {Array<object>} Array of create-payload objects, in creation order.
  */
 function buildSkippyContextMenuItems(settings, site) {
-  const SkippyStorage = globalThis.SkippyStorage || /** @type {any} */ (globalThis).self?.SkippyStorage;
-  if (!SkippyStorage) throw new Error("SkippyStorage global not loaded — import helpers/storage.js before helpers/menu.js");
+  const SkippyStorage =
+    globalThis.SkippyStorage || /** @type {any} */ (globalThis).self?.SkippyStorage;
+  if (!SkippyStorage)
+    throw new Error(
+      "SkippyStorage global not loaded — import helpers/storage.js before helpers/menu.js",
+    );
 
   const effective = SkippyStorage.getEffectiveSiteSettings(settings, site.host);
   const parentId = `${SKIPPY_MENU_ID_PREFIX}${site.host}:root`;

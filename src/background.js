@@ -67,7 +67,8 @@ async function handleContextMenuClick(info) {
   }
 
   const current = await SkippyStorage.getSkippySettings();
-  const existingOverride = current.siteOverrides[parsed.host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
+  const existingOverride =
+    current.siteOverrides[parsed.host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
 
   if (parsed.action === "enable") {
     await SkippyStorage.saveSkippySettings({
@@ -94,7 +95,11 @@ async function handleContextMenuClick(info) {
         // Touching any individual override flag implies the user wants override on —
         // otherwise the toggle would silently no-op (master would keep winning). Flip
         // useOverride true on first nudge, same as the options-page card.
-        [parsed.host]: { ...existingOverride, [parsed.flag]: Boolean(info.checked), useOverride: true },
+        [parsed.host]: {
+          ...existingOverride,
+          [parsed.flag]: Boolean(info.checked),
+          useOverride: true,
+        },
       },
     });
     return;
@@ -104,22 +109,32 @@ async function handleContextMenuClick(info) {
 // Service worker lifecycle: rebuild on install (covers first run), on browser startup
 // (Chrome wipes menus between SW restarts), and any time settings change in any tab.
 chrome.runtime.onInstalled.addListener(() => {
-  rebuildContextMenus().catch((err) => console.warn("[Skippy] context menu install build failed", err));
+  rebuildContextMenus().catch((err) =>
+    console.warn("[Skippy] context menu install build failed", err),
+  );
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  rebuildContextMenus().catch((err) => console.warn("[Skippy] context menu startup build failed", err));
+  rebuildContextMenus().catch((err) =>
+    console.warn("[Skippy] context menu startup build failed", err),
+  );
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "sync" || !changes.skippySettings) return;
-  rebuildContextMenus().catch((err) => console.warn("[Skippy] context menu storage-change build failed", err));
+  rebuildContextMenus().catch((err) =>
+    console.warn("[Skippy] context menu storage-change build failed", err),
+  );
 });
 
 chrome.contextMenus.onClicked.addListener((info) => {
-  handleContextMenuClick(info).catch((err) => console.warn("[Skippy] context menu click failed", info?.menuItemId, err));
+  handleContextMenuClick(info).catch((err) =>
+    console.warn("[Skippy] context menu click failed", info?.menuItemId, err),
+  );
 });
 
 // First build on load — Chrome may wake the SW without firing onInstalled / onStartup
 // (e.g. event dispatch from a tab). Build now so the menu is always available.
-rebuildContextMenus().catch((err) => console.warn("[Skippy] context menu initial build failed", err));
+rebuildContextMenus().catch((err) =>
+  console.warn("[Skippy] context menu initial build failed", err),
+);

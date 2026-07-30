@@ -51,7 +51,16 @@ function findButtonByAriaLabel(label) {
 function probeByAriaLabel(label) {
   const nodes = document.querySelectorAll(`button[aria-label="${label}"]`);
   const first = nodes[0] || null;
-  if (!first) return { label, count: 0, visible: false, present: false, rect: null, opacity: null, pointerEvents: null };
+  if (!first)
+    return {
+      label,
+      count: 0,
+      visible: false,
+      present: false,
+      rect: null,
+      opacity: null,
+      pointerEvents: null,
+    };
   const style = window.getComputedStyle(first);
   return {
     label,
@@ -81,7 +90,9 @@ function probeByAriaLabel(label) {
  */
 function findNextEpisodeButton() {
   return /** @type {HTMLElement|null} */ (
-    document.querySelector('button[data-testid="next-episode-button"], button[aria-label="Next Episode"]')
+    document.querySelector(
+      'button[data-testid="next-episode-button"], button[aria-label="Next Episode"]',
+    )
   );
 }
 
@@ -156,13 +167,22 @@ function findCrunchyrollSkipButton(settings) {
         dlog("decide-next", "→ return Next Episode (skipCredits visible + nextEpisode flag on)");
         return nextEpisodeBtn;
       }
-      dlog("decide-next-miss", "skipCredits visible + nextEpisode flag on, but Next Episode button not found in DOM");
+      dlog(
+        "decide-next-miss",
+        "skipCredits visible + nextEpisode flag on, but Next Episode button not found in DOM",
+      );
     }
     if (effective.skipCredits && skipCreditsBtn) {
-      dlog("decide-credits", "→ return Skip Credits (nextEpisode disabled or Next Episode button missing)");
+      dlog(
+        "decide-credits",
+        "→ return Skip Credits (nextEpisode disabled or Next Episode button missing)",
+      );
       return skipCreditsBtn;
     }
-    dlog("decide-credits-noop", "skipCredits visible but both nextEpisode + skipCredits flags off → no-op");
+    dlog(
+      "decide-credits-noop",
+      "skipCredits visible but both nextEpisode + skipCredits flags off → no-op",
+    );
     return null;
   }
 
@@ -170,7 +190,10 @@ function findCrunchyrollSkipButton(settings) {
   // NOT visible. Pre-fix code would have clicked Next Episode here; we deliberately
   // don't. Logging it makes the new gate observable while debugging.
   if (nextEpisodeBtn) {
-    dlog("guard-next", "Next Episode mounted but Skip Credits not visible → no click (mid-episode false-positive guard)");
+    dlog(
+      "guard-next",
+      "Next Episode mounted but Skip Credits not visible → no click (mid-episode false-positive guard)",
+    );
   }
   return null;
 }
