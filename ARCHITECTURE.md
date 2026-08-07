@@ -158,7 +158,7 @@ Next poll tick uses the new settings
 
 ## Testing
 
-Vitest + jsdom. Chrome APIs are mocked via `tests/_chromeMock.js` + `vi.stubGlobal("chrome", chrome)`. Tests focus on `SkippyStorage` (defaults, merge semantics, change subscriptions). DOM-level adapter behavior is tested manually in the browser — automated coverage there would require fixtures of each site's actual DOM, which churns too fast to be worth pinning.
+Vitest + jsdom. Chrome APIs are mocked via `tests/_chromeMock.js` + `vi.stubGlobal("chrome", chrome)`. Coverage spans `SkippyStorage` (defaults, merge semantics, change subscriptions), `SkippyMenu` (pure menu shape + id parsing), `skippy-core.js` (visibility predicates, click dispatch, polling loop), and `background.js` (rebuild serialization, create-error reporting, click routing — driven through stubbed `importScripts` + `chrome.contextMenus`). DOM-level adapter behavior is tested manually in the browser — automated coverage there would require fixtures of each site's actual DOM, which churns too fast to be worth pinning. See `DEV.md` § Tests for the per-file breakdown.
 
 ## CI/CD
 

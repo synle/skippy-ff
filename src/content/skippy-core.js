@@ -3,26 +3,59 @@
 /** Verbose-logging flag. Mirrored from `settings.verboseLogging` by `skippyStart`. */
 let _verbose = false;
 
+/**
+ * Whether `settings.verboseLogging` has been resolved yet. Content scripts read settings
+ * asynchronously, so every `skippyLog` call made before that read lands (adapter load
+ * banners, "polling started") would otherwise be evaluated against the initial `false` and
+ * dropped — the exact lines a user needs when debugging "is Skippy even running?".
+ */
+let _verboseResolved = false;
+
+/**
+ * Bounded buffer of log lines emitted before `verboseLogging` was known. Flushed by the
+ * first `skippySetVerbose` call. Capped so a never-resolving settings read can't grow it
+ * without bound.
+ * @type {unknown[][]}
+ */
+const _pendingLogs = [];
+
+/** Cap on `_pendingLogs`. Startup emits ~2 lines; 50 is slack, not a budget. */
+const SKIPPY_PENDING_LOG_MAX = 50;
+
 /** Per-key dedupe cache for `skippyDLog`. Suppresses identical consecutive messages. */
 const _lastDLog = /** @type {Record<string, string>} */ ({});
 
 /**
  * Flip the in-memory verbose flag. Called by `skippyStart` whenever settings load or change.
+ * The first call also drains the pre-settings log buffer, so startup diagnostics emitted
+ * before storage resolved still reach the console when verbose logging is on.
  * @param {boolean} value New verbose state.
  * @returns {void}
  */
 function skippySetVerbose(value) {
   _verbose = !!value;
+  if (_verboseResolved) return;
+  _verboseResolved = true;
+  const queued = _pendingLogs.splice(0, _pendingLogs.length);
+  if (!_verbose) return;
+  for (const args of queued) console.log(...args);
 }
 
 /**
  * Verbose-gated `console.log`. No-op unless `settings.verboseLogging` is true. Use this
  * for any diagnostic line that should be silent for normal users but visible while
  * debugging from the options page.
+ *
+ * Calls made before settings resolve are buffered rather than dropped — see
+ * `_verboseResolved`.
  * @param {...unknown} args Values to log.
  * @returns {void}
  */
 function skippyLog(...args) {
+  if (!_verboseResolved) {
+    if (_pendingLogs.length < SKIPPY_PENDING_LOG_MAX) _pendingLogs.push(args);
+    return;
+  }
   if (!_verbose) return;
   console.log(...args);
 }
@@ -138,15 +171,21 @@ function skippyFindVisible(selectors) {
  * Click an element robustly. Streaming players often render the real `<button>` inside
  * a custom element's shadow root, so a plain MouseEvent dispatched on the host may never
  * reach the listener. Strategy depends on what the caller hands us:
- *   - **Direct click target** (`<button>`, `<a>`, or `[role="button"]`): call `.click()` AND
- *     dispatch composed mousedown/mouseup/click events so both `el.onclick` handlers and
- *     `addEventListener('click', …)` listeners (including those inside enclosing shadow
- *     roots) fire. Skip the hit-test fallback — the adapter already resolved the target,
- *     so `elementFromPoint` would only walk us back up to a wrapper that has no handler.
+ *   - **Direct click target** (`<button>`, `<a>`, or `[role="button"]`): call `.click()`.
+ *     Skip the hit-test fallback — the adapter already resolved the target, so
+ *     `elementFromPoint` would only walk us back up to a wrapper that has no handler.
  *   - **Custom element with an open shadow root**: drill into the shadow root and recurse
  *     once we find an inner button.
  *   - **Anything else** (closed shadow root, plain wrapper): hit-test the center with
  *     `document.elementFromPoint`, which transparently returns the topmost paintable node.
+ *
+ * **Native `.click()` only — no synthetic `MouseEvent` dispatch.** An earlier version also
+ * fired composed `mousedown`/`mouseup`/`click` events to reach `addEventListener` handlers
+ * across shadow boundaries. Players treat those as real pointer activity and fade their
+ * control chrome back in, which re-armed the very prompt we had just dismissed and produced
+ * a click/strobe loop (most visibly on Crunchyroll). `HTMLElement.click()` already dispatches
+ * a trusted-enough `click` event that bubbles and composes, so the synthetic pass bought
+ * nothing. Don't reintroduce it without reproducing the strobe loop first.
  * @param {HTMLElement} el Element to click.
  * @returns {void}
  */
@@ -157,9 +196,6 @@ function skippyClick(el) {
   // 1. Caller already resolved a real click target — fire on it directly.
   if (isClickTarget) {
     try {
-      // el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, composed: true, view: window }));
-      // el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, composed: true, view: window }));
-      // el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window }));
       el.click();
       skippyLog("[Skippy] click via direct on", tag, el);
       return;
@@ -197,11 +233,10 @@ function skippyClick(el) {
     skippyLog("[Skippy] elementFromPoint click attempt failed", err);
   }
 
-  // 4. Last-resort composed MouseEvent + native click on the original element.
+  // 4. Last-resort native click on the original element.
   try {
-    // el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window }));
     el.click();
-    skippyLog("[Skippy] click via fallback composed + native", el);
+    skippyLog("[Skippy] click via fallback native", el);
   } catch (err) {
     skippyLog("[Skippy] fallback click failed", err);
   }
@@ -220,6 +255,13 @@ function skippyClick(el) {
  * (`skippyIsPresent`) per its own site behavior; Crunchyroll, for example, must use
  * strict-only on Skip Intro/Recap/Credits because the player otherwise re-triggers its
  * control overlay every time we click an idle-faded button.
+ *
+ * **Fails closed.** When the initial settings read rejects — most commonly because the
+ * extension context was invalidated by a reload or auto-update while the tab stayed open —
+ * `settings` stays `null` and the loop clicks nothing. That's the safe default (we can't
+ * know which sites the user disabled), but it is announced with a single `console.warn`
+ * rather than swallowed, because the previous silent failure was indistinguishable from
+ * "Skippy is working and there's just nothing to skip".
  * @param {(settings: object) => HTMLElement|null} findSkipButton Site adapter callback.
  * @param {object} [options] Options.
  * @param {number} [options.intervalMs] Fallback polling interval in ms when settings haven't loaded yet.
@@ -232,12 +274,23 @@ function skippyStart(findSkipButton, options = {}) {
   const cooldownMs = options.cooldownMs ?? 2000;
   const lastClickedAt = new WeakMap();
 
+  /** Last adapter error message reported by `tick`. Dedupes the warning across ticks. */
+  let lastAdapterError = "";
+
   let settings = null;
-  SkippyStorage.getSkippySettings().then((s) => {
-    settings = s;
-    skippySetVerbose(s.verboseLogging);
-    skippyLog("[Skippy] loaded settings", s);
-  });
+  SkippyStorage.getSkippySettings().then(
+    (s) => {
+      settings = s;
+      skippySetVerbose(s.verboseLogging);
+      skippyLog("[Skippy] loaded settings", s);
+    },
+    (err) => {
+      // Unblock the buffered startup logs even though verbose state is unknowable, so the
+      // adapter-load banner isn't stranded in `_pendingLogs` forever.
+      skippySetVerbose(false);
+      console.warn("[Skippy] could not read settings — skipping is disabled on this page", err);
+    },
+  );
   SkippyStorage.onSkippySettingsChanged((s) => {
     settings = s;
     skippySetVerbose(s.verboseLogging);
@@ -248,6 +301,12 @@ function skippyStart(findSkipButton, options = {}) {
    * One iteration of the poll loop. Reads the current `pollIntervalMs` from settings
    * (clamped via `SkippyStorage.clampPollIntervalMs` as a defensive fallback) and re-arms
    * itself. Runs the adapter, gates clicks by cooldown, logs the click unconditionally.
+   *
+   * A throwing adapter is caught here rather than left to escape into the `setTimeout`
+   * callback. The `finally` re-arm means an uncaught throw never stopped the loop — it just
+   * reported an uncaught error to the console on every tick, several times a second, with
+   * no `[Skippy]` attribution. The warning is deduped on message so a persistently broken
+   * adapter logs once per distinct failure instead of forever.
    * @returns {void}
    */
   function tick() {
@@ -271,6 +330,14 @@ function skippyStart(findSkipButton, options = {}) {
             skippyClick(button);
           }
         }
+      }
+    } catch (err) {
+      // Not verbose-gated: an adapter that throws is broken, and the user needs to see it
+      // to file a useful bug report. Deduped so it can't flood the console.
+      const message = String((err && /** @type {Error} */ (err).message) || err);
+      if (message !== lastAdapterError) {
+        lastAdapterError = message;
+        console.warn("[Skippy] adapter threw during poll — continuing", err);
       }
     } finally {
       setTimeout(tick, intervalMs);

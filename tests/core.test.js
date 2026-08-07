@@ -1,23 +1,14 @@
 /** Tests for `skippy-core.js` surfaces not covered by `visibility.test.js` — robust click
  * dispatch, the verbose-log gate + per-key dedupe, and the polling-loop cooldown / settings
  * reactivity. The visibility predicates (`skippyIsVisible`, `skippyIsPresent`,
- * `skippyFindVisible`) live in `visibility.test.js`; do not duplicate them here. */
+ * `skippyFindVisible`) live in `visibility.test.js`; the once-per-lifetime startup paths
+ * (pre-settings log buffer, settings-read failure) live in `core-startup.test.js`. Do not
+ * duplicate either here. */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createChromeMock } from "./_chromeMock.js";
 
 const { chrome, reset } = createChromeMock();
 vi.stubGlobal("chrome", chrome);
-
-// jsdom's MouseEvent constructor rejects `view: window` because the Window instance check
-// fails across realms. Strip `view` before delegating to the real implementation so
-// skippyClick's composed event dispatch doesn't throw during tests.
-const OrigMouseEvent = globalThis.MouseEvent;
-globalThis.MouseEvent = class extends OrigMouseEvent {
-  constructor(type, init = {}) {
-    const { view, ...rest } = init;
-    super(type, rest);
-  }
-};
 
 // skippy-core.js attaches helpers to globalThis.SkippyCore. The polling loop reads from
 // SkippyStorage, so import that first.
@@ -33,7 +24,7 @@ beforeEach(() => {
 });
 
 describe("SkippyCore.skippyClick", () => {
-  it("clicks a <button> directly and dispatches composed events", () => {
+  it("clicks a <button> directly", () => {
     const btn = document.createElement("button");
     document.body.appendChild(btn);
     const spy = vi.fn();
@@ -279,13 +270,27 @@ describe("SkippyCore.skippyStart polling loop", () => {
     expect(find).toHaveBeenCalled();
   });
 
-  it("re-arms the next tick via the finally block even when the adapter throws", async () => {
+  it("catches an adapter throw, warns once, and keeps polling", async () => {
+    // Regression: the throw escaped `tick` into the setTimeout callback. The `finally`
+    // re-armed the loop, so it never stopped — it just reported an unattributed uncaught
+    // error to the console on every tick, several times a second.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const find = vi.fn(() => {
       throw new Error("adapter broke");
     });
     skippyStart(find, { intervalMs: 100 });
     await vi.advanceTimersByTimeAsync(0);
-    await expect(vi.advanceTimersByTimeAsync(100)).rejects.toThrow("adapter broke");
+    await vi.advanceTimersByTimeAsync(100);
     expect(find).toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      "[Skippy] adapter threw during poll — continuing",
+      expect.any(Error),
+    );
+
+    // Same failure on later ticks is deduped rather than logged again.
+    const afterFirst = warn.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(warn.mock.calls.length).toBe(afterFirst);
+    warn.mockRestore();
   });
 });

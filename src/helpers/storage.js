@@ -96,7 +96,7 @@ function clampPollIntervalMs(value) {
  *
  * **Drift check:** if a site's `urlPatterns` here diverges from `manifest.json`, the context
  * menu will misfire (appear on pages with no content script, or vice versa). Updating one
- * without the other is the common bug; rule 6 in `CLAUDE.md` lists the files to touch
+ * without the other is the common bug; rule 6 in `AGENTS.md` lists the files to touch
  * together when adding a new site.
  * @type {ReadonlyArray<{host: string, label: string, urlPatterns: ReadonlyArray<string>}>}
  */
@@ -199,13 +199,20 @@ async function saveSkippySettings(patch) {
 
 /**
  * Subscribe to settings changes. Callback fires with latest merged settings.
+ *
+ * The re-read is guarded — `chrome.storage.sync.get` rejects once the extension context is
+ * invalidated (reload / auto-update with the tab still open), and an unhandled rejection
+ * here would surface as an anonymous console error with no attribution on every subsequent
+ * settings change.
  * @param {(settings: typeof SKIPPY_DEFAULTS) => void} callback Listener.
  * @returns {void}
  */
 function onSkippySettingsChanged(callback) {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "sync" || !changes[SKIPPY_STORAGE_KEY]) return;
-    getSkippySettings().then(callback);
+    getSkippySettings()
+      .then(callback)
+      .catch((err) => console.warn("[Skippy] settings-change read failed", err));
   });
 }
 

@@ -29,7 +29,7 @@ npm run build
 | `npm run build`   | Copy `src/` + `public/` to `dist/` |
 | `npm run bundle`  | Zip `dist/` into `skippy-ff.zip`   |
 | `npm run package` | Build + bundle                     |
-| `npm run format`  | Prettier (140 char width)          |
+| `npm run format`  | oxfmt (see `.oxfmtrc.json`)        |
 
 ## Project structure
 

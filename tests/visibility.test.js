@@ -1,7 +1,7 @@
 /** Tests for the SkippyCore visibility engine — the eight-gate `skippyIsVisible` and the
  * permissive `skippyIsPresent`. These are pure DOM predicates so jsdom is a faithful host
  * (in contrast to the rest of `skippy-core.js`, which exercises chrome.storage and the
- * polling loop and is validated manually per CLAUDE.md). */
+ * polling loop and is validated manually per AGENTS.md). */
 import { describe, it, expect, beforeEach } from "vitest";
 
 // Importing for side effect — skippy-core.js attaches helpers to globalThis.SkippyCore.

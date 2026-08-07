@@ -16,7 +16,7 @@ There is no separate Hulu adapter — Hulu's catalog now streams through Disney+
 
 1. **`npm run validate` before every commit** — runs test + lint + build + format.
 2. **JSDoc every touched function** — one-line description, params, return, raised errors, side effects. Update in the same edit when signature or behavior changes. Trivial one-liners can skip.
-3. **Add a test for every behavior change** in `helpers/storage.js`, `helpers/menu.js`, or in the pure DOM-predicate helpers in `content/skippy-core.js` (`skippyIsVisible`, `skippyIsPresent`, `skippyFindVisible`). Adapter DOM-selector changes are tested manually in the browser (see `DEV.md` § Debugging) — site DOMs churn too fast to be worth fixturing.
+3. **Add a test for every behavior change** in `helpers/storage.js`, `helpers/menu.js`, `background.js`, or in the pure DOM-predicate helpers in `content/skippy-core.js` (`skippyIsVisible`, `skippyIsPresent`, `skippyFindVisible`). Adapter DOM-selector changes are tested manually in the browser (see `DEV.md` § Debugging) — site DOMs churn too fast to be worth fixturing.
 4. **Squash merge only.** Never merge commits or rebase merges. Author = local `.gitconfig`.
 5. **Update `DEV.md` / `ARCHITECTURE.md`** when adding a site, changing the build pipeline, or introducing a new global helper. Keep the README's settings table and supported-sites list in sync with `SKIPPY_DEFAULTS`.
 6. **Adding a new streaming site is a 3-file change** — adapter (`src/content/skippy-<site>.js`), manifest entry, `copyFileSync` in `vite.config.js`, plus an entry in `SKIPPY_SITES` + `SKIPPY_DEFAULTS.enabledSites` (both in `src/helpers/storage.js`). Options-page cards and context-menu items are generated from `SKIPPY_SITES` — no per-site UI wiring. Step-by-step in `DEV.md`.

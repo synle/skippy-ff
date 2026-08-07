@@ -11,9 +11,40 @@ importScripts("helpers/storage.js", "helpers/menu.js");
  * simultaneously. Two concurrent `removeAll` + `create` sequences race and produce
  * duplicate ids. Chaining through `pendingRebuild` serializes rebuilds so only one
  * `removeAll` → create loop runs at a time.
+ *
+ * **Always settles fulfilled.** A rejected link poisons the whole chain: `.then(onFulfilled)`
+ * on a rejected promise skips the callback and forwards the rejection, so a single failed
+ * rebuild (extension context torn down mid-read, `chrome.storage.sync` unavailable) would
+ * silently suppress *every* later rebuild for the life of the service worker. The rejection
+ * is surfaced to the caller via a separate branch instead — see `rebuildContextMenus`.
  * @type {Promise<void>}
  */
 let pendingRebuild = Promise.resolve();
+
+/**
+ * Create one context-menu item and report failures.
+ *
+ * `chrome.contextMenus.create` does **not** throw on failure — it returns the id
+ * synchronously and reports errors asynchronously through `chrome.runtime.lastError`,
+ * readable only inside the creation callback. Wrapping the call in `try/catch` therefore
+ * catches nothing and leaves Chrome to print an "Unchecked runtime.lastError" warning with
+ * no indication of which item failed. Passing a callback that reads `lastError` both
+ * consumes the error (silencing the generic warning) and names the offending item id.
+ * @param {object} payload A create-properties object from `SkippyMenu.buildSkippyContextMenuItems`.
+ * @returns {void}
+ */
+function createMenuItem(payload) {
+  try {
+    chrome.contextMenus.create(payload, () => {
+      const err = chrome.runtime.lastError;
+      if (err) console.warn("[Skippy] failed to create context menu item", payload.id, err.message);
+    });
+  } catch (err) {
+    // Synchronous throws are only possible for a malformed payload (bad `contexts` value,
+    // unknown `parentId`). Log and keep going so one bad item can't abort the rebuild.
+    console.warn("[Skippy] context menu create threw", payload.id, err);
+  }
+}
 
 /**
  * Rebuild every Skippy context-menu item from scratch.
@@ -25,28 +56,29 @@ let pendingRebuild = Promise.resolve();
  *
  * Per-item failures are caught and logged, not rethrown — Chrome will reject duplicate ids
  * if a previous `removeAll` is still settling, and we don't want one stale id to take down
- * the rest of the rebuild.
+ * the rest of the rebuild. See `createMenuItem` for why that needs a callback rather than
+ * a `try/catch`.
  *
  * Callers are chained via `pendingRebuild` so concurrent triggers serialize into a single
- * queue rather than racing.
+ * queue rather than racing. The queue is deliberately kept in a fulfilled state: the
+ * returned promise carries the rejection to the caller, while `pendingRebuild` swallows it
+ * so the next rebuild still runs.
  * @returns {Promise<void>}
  */
 function rebuildContextMenus() {
-  pendingRebuild = pendingRebuild.then(async () => {
+  const run = async () => {
     await new Promise((resolve) => chrome.contextMenus.removeAll(resolve));
     const settings = await SkippyStorage.getSkippySettings();
     for (const site of SkippyStorage.SKIPPY_SITES) {
       const items = SkippyMenu.buildSkippyContextMenuItems(settings, site);
-      for (const payload of items) {
-        try {
-          chrome.contextMenus.create(payload);
-        } catch (err) {
-          console.warn("[Skippy] failed to create context menu item", payload.id, err);
-        }
-      }
+      for (const payload of items) createMenuItem(payload);
     }
-  });
-  return pendingRebuild;
+  };
+  // `pendingRebuild.then(run, run)` — run on both settle paths so a previously failed
+  // rebuild can't skip this one.
+  const result = pendingRebuild.then(run, run);
+  pendingRebuild = result.catch(() => {});
+  return result;
 }
 
 /**

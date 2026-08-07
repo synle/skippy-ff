@@ -19,10 +19,11 @@ export default defineConfig({
       // (`src/content/skippy-{crunchyroll,disneyplus,appletv}.js`) and the options-page
       // module (`src/pages/options/options.js`) run in a real Chrome MV3 context — Chrome
       // storage, shadow DOM, streaming-site UI — and are validated manually in the browser
-      // per CLAUDE.md. `skippy-core.js` is the site-agnostic helper layer (visibility
+      // per AGENTS.md. `skippy-core.js` is the site-agnostic helper layer (visibility
       // checks, click dispatch, polling loop), which IS fixturable in jsdom, so it stays
-      // in scope.
-      include: ["src/helpers/**/*.{js,ts}", "src/content/skippy-core.js"],
+      // in scope. `background.js` is likewise fixturable — `tests/background.test.js`
+      // stubs `importScripts` + `chrome.contextMenus` and drives the real service worker.
+      include: ["src/helpers/**/*.{js,ts}", "src/content/skippy-core.js", "src/background.js"],
       exclude: [
         "src/**/*.{test,spec}.{js,ts}",
         "src/**/*.d.ts",

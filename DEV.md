@@ -46,7 +46,7 @@ The manifest's `name` is suffixed with `(DEV)` in watch mode so you can tell whi
 | `npm run test`          | Vitest run                                                   |
 | `npm run test:coverage` | Vitest with coverage thresholds (see `vite.config.js`)       |
 | `npm run lint`          | ESLint over `src/`                                           |
-| `npm run format`        | Prettier (140 char width) on the whole tree                  |
+| `npm run format`        | oxfmt (see `.oxfmtrc.json`) on the whole tree                |
 | `npm run validate`      | `test + lint + build + format` — run before every commit     |
 
 ## Adding a new streaming site
@@ -119,6 +119,17 @@ npm run test:coverage  # with coverage gate (thresholds in vite.config.js)
 ```
 
 Tests live in `tests/`. Chrome APIs are mocked via `tests/_chromeMock.js` and `vi.stubGlobal("chrome", chrome)`. The mock implements the slice of `chrome.storage` and `chrome.storage.onChanged` that `helpers/storage.js` actually uses.
+
+| File                   | Covers                                                                                 |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `storage.test.js`      | `SkippyStorage` — defaults, merge semantics, clamping, per-site override resolution    |
+| `menu.test.js`         | `SkippyMenu` — pure context-menu shape + id parsing                                    |
+| `visibility.test.js`   | `skippyIsVisible` / `skippyIsPresent` / `skippyFindVisible` DOM predicates             |
+| `core.test.js`         | `skippyClick`, the verbose-log gate, the steady-state polling loop                     |
+| `core-startup.test.js` | Once-per-lifetime core paths — pre-settings log buffer, settings-read failure          |
+| `background.test.js`   | The service worker — rebuild serialization, create-error reporting, menu-click routing |
+
+`background.test.js` stubs `importScripts` (jsdom has no such function) and loads the helpers as modules, then drives the real worker through the listeners it registers. Both `core-startup.test.js` and `background.test.js` call `vi.resetModules()` per case because the code under test keeps latches in module scope.
 
 Adapter logic (DOM selectors, visibility) is tested manually in the browser. Pinning each streaming site's DOM in fixtures isn't worth the maintenance — they change too often.
 
