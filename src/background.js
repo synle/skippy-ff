@@ -22,28 +22,57 @@ importScripts("helpers/storage.js", "helpers/menu.js");
 let pendingRebuild = Promise.resolve();
 
 /**
- * Create one context-menu item and report failures.
+ * Update an existing context-menu item in place. Used as the fallback when `create`
+ * fails because the id already exists (a stale item survived `removeAll`, e.g. another
+ * worker instance rebuilt concurrently). `update` cannot change `id` or `type`, so both are
+ * stripped from the properties passed to it.
+ * @param {object} payload Create-properties object; `id` names the item to update.
+ * @returns {Promise<void>} Always fulfilled; failures are logged, never thrown.
+ */
+function updateMenuItem(payload) {
+  const { id, type, ...props } = payload;
+  return new Promise((resolve) => {
+    try {
+      chrome.contextMenus.update(id, props, () => {
+        const err = chrome.runtime.lastError;
+        if (err) console.warn("[Skippy] failed to update context menu item", id, err.message);
+        resolve();
+      });
+    } catch (err) {
+      console.warn("[Skippy] context menu update threw", id, err);
+      resolve();
+    }
+  });
+}
+
+/**
+ * Create one context-menu item, falling back to an in-place update when creation fails.
  *
- * `chrome.contextMenus.create` does **not** throw on failure — it returns the id
- * synchronously and reports errors asynchronously through `chrome.runtime.lastError`,
- * readable only inside the creation callback. Wrapping the call in `try/catch` therefore
- * catches nothing and leaves Chrome to print an "Unchecked runtime.lastError" warning with
- * no indication of which item failed. Passing a callback that reads `lastError` both
- * consumes the error (silencing the generic warning) and names the offending item id.
+ * `chrome.contextMenus.create` does **not** throw on failure — it reports errors
+ * asynchronously through `chrome.runtime.lastError`, readable only inside the creation
+ * callback. Reading it there consumes the error (no "Unchecked runtime.lastError").
+ * Chrome exposes no error code, only a message, so any create failure triggers an
+ * `update` attempt — for the common "duplicate id" case this converges the item to the
+ * desired state; for anything else `update` fails too and is logged.
  * @param {object} payload A create-properties object from `SkippyMenu.buildSkippyContextMenuItems`.
- * @returns {void}
+ * @returns {Promise<void>} Resolves once Chrome has acknowledged the item. Never rejects.
  */
 function createMenuItem(payload) {
-  try {
-    chrome.contextMenus.create(payload, () => {
-      const err = chrome.runtime.lastError;
-      if (err) console.warn("[Skippy] failed to create context menu item", payload.id, err.message);
-    });
-  } catch (err) {
-    // Synchronous throws are only possible for a malformed payload (bad `contexts` value,
-    // unknown `parentId`). Log and keep going so one bad item can't abort the rebuild.
-    console.warn("[Skippy] context menu create threw", payload.id, err);
-  }
+  return new Promise((resolve) => {
+    try {
+      chrome.contextMenus.create(payload, () => {
+        const err = chrome.runtime.lastError;
+        if (!err) return resolve();
+        console.warn("[Skippy] failed to create context menu item", payload.id, err.message);
+        updateMenuItem(payload).then(resolve);
+      });
+    } catch (err) {
+      // Synchronous throws are only possible for a malformed payload (bad `contexts` value,
+      // unknown `parentId`). Log and keep going so one bad item can't abort the rebuild.
+      console.warn("[Skippy] context menu create threw", payload.id, err);
+      resolve();
+    }
+  });
 }
 
 /**
@@ -67,12 +96,24 @@ function createMenuItem(payload) {
  */
 function rebuildContextMenus() {
   const run = async () => {
-    await new Promise((resolve) => chrome.contextMenus.removeAll(resolve));
+    await new Promise((resolve) =>
+      chrome.contextMenus.removeAll(() => {
+        // Consume lastError so a failed wipe doesn't surface as "Unchecked runtime.lastError";
+        // creates below fall back to `update` for any survivor.
+        const err = chrome.runtime.lastError;
+        if (err) console.warn("[Skippy] failed to clear context menu", err.message);
+        resolve();
+      }),
+    );
     const settings = await SkippyStorage.getSkippySettings();
+    const pending = [];
     for (const site of SkippyStorage.SKIPPY_SITES) {
       const items = SkippyMenu.buildSkippyContextMenuItems(settings, site);
-      for (const payload of items) createMenuItem(payload);
+      for (const payload of items) pending.push(createMenuItem(payload));
     }
+    // Hold the queue until Chrome acks every item, so the next rebuild's `removeAll`
+    // can't interleave with this one's creates.
+    await Promise.all(pending);
   };
   // `pendingRebuild.then(run, run)` — run on both settle paths so a previously failed
   // rebuild can't skip this one.

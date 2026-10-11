@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
  * change listener, the three runtime/contextMenus listener registries, and the
  * `contextMenus.create` callback contract (errors arrive via `runtime.lastError`, not by
  * throwing).
- * @param {{getImpl?: () => Promise<object>, createLastError?: (payload: object) => {message: string} | undefined}} [opts] Overrides.
+ * @param {{getImpl?: () => Promise<object>, createLastError?: (payload: object) => {message: string} | undefined, updateLastError?: (id: string) => {message: string} | undefined}} [opts] Overrides.
  * @returns {object} A mock `chrome` plus the captured listeners and spies.
  */
 function createBackgroundChromeMock(opts = {}) {
@@ -25,6 +25,11 @@ function createBackgroundChromeMock(opts = {}) {
   const removeAll = vi.fn((cb) => cb && cb());
   const create = vi.fn((payload, cb) => {
     chrome.runtime.lastError = opts.createLastError ? opts.createLastError(payload) : undefined;
+    if (cb) cb();
+    chrome.runtime.lastError = undefined;
+  });
+  const update = vi.fn((id, props, cb) => {
+    chrome.runtime.lastError = opts.updateLastError ? opts.updateLastError(id) : undefined;
     if (cb) cb();
     chrome.runtime.lastError = undefined;
   });
@@ -53,11 +58,12 @@ function createBackgroundChromeMock(opts = {}) {
     contextMenus: {
       removeAll,
       create,
+      update,
       onClicked: { addListener: vi.fn((cb) => listeners.menuClicked.push(cb)) },
     },
   };
 
-  return { chrome, storageData, changeListeners, listeners, removeAll, create, get, set };
+  return { chrome, storageData, changeListeners, listeners, removeAll, create, update, get, set };
 }
 
 /**
@@ -141,6 +147,45 @@ describe("background context-menu rebuild", () => {
       "[Skippy] failed to create context menu item",
       expect.stringContaining(":root"),
       "Cannot create item with duplicate id",
+    );
+  });
+
+  it("updates a duplicate-id item in place instead of leaving it stale", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const mock = createBackgroundChromeMock({
+      createLastError: (payload) =>
+        payload.id === "skippy:disneyplus.com:enable"
+          ? { message: "Cannot create item with duplicate id skippy:disneyplus.com:enable" }
+          : undefined,
+    });
+    await loadBackground(mock.chrome);
+    await vi.waitFor(() => expect(mock.update).toHaveBeenCalledTimes(1));
+
+    const [id, props] = mock.update.mock.calls[0];
+    expect(id).toBe("skippy:disneyplus.com:enable");
+    expect(props).not.toHaveProperty("id");
+    expect(props).not.toHaveProperty("type");
+    expect(props.title).toBe("Enable on Disney+");
+  });
+
+  it("swallows a failed update fallback without rejecting the rebuild", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const mock = createBackgroundChromeMock({
+      createLastError: (payload) =>
+        payload.id.endsWith(":root") ? { message: "duplicate id" } : undefined,
+      updateLastError: () => ({ message: "Cannot find menu item" }),
+    });
+    await loadBackground(mock.chrome);
+    await vi.waitFor(() =>
+      expect(warn).toHaveBeenCalledWith(
+        "[Skippy] failed to update context menu item",
+        expect.stringContaining(":root"),
+        "Cannot find menu item",
+      ),
+    );
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("build failed"),
+      expect.anything(),
     );
   });
 
