@@ -200,7 +200,8 @@ async function handleContextMenuClick(info) {
   // Follow master action: skippy:<host>:follow
   if (action === "follow") {
     // "Follow master" checked → useOverride false. Inverse phrasing for the UI; flip here.
-    const existingOverride = current.siteOverrides[host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
+    const existingOverride =
+      current.siteOverrides[host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
     await SkippyStorage.saveSkippySettings({
       siteOverrides: {
         ...current.siteOverrides,

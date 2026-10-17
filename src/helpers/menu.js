@@ -238,7 +238,6 @@ function parseSkippyMenuItemId(menuItemId) {
   return null;
 }
 
-
 globalThis.SkippyMenu = {
   buildSkippySiteVisibilityUpdates,
   buildSkippyRootMenuItems,
