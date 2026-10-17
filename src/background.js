@@ -229,7 +229,11 @@ chrome.contextMenus.onClicked.addListener((info) => {
   );
 });
 
-chrome.contextMenus.onShown.addListener(handleContextMenuShown);
+// Chromium exposes `onShown`; Edge versions without it still support the rest of the
+// context-menu API, so keep service-worker registration alive there.
+if (chrome.contextMenus.onShown) {
+  chrome.contextMenus.onShown.addListener(handleContextMenuShown);
+}
 
 // First build on load — Chrome may wake the SW without firing onInstalled / onStartup
 // (e.g. event dispatch from a tab). Build now so the menu is always available.

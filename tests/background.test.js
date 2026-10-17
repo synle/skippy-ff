@@ -166,6 +166,14 @@ describe("background context-menu rebuild", () => {
     expect(mock.update.mock.calls.every(([, props]) => props.visible === false)).toBe(true);
   });
 
+  it("still registers when the browser does not expose contextMenus.onShown", async () => {
+    const mock = createBackgroundChromeMock();
+    delete mock.chrome.contextMenus.onShown;
+
+    await expect(loadBackground(mock.chrome)).resolves.toBeUndefined();
+    await vi.waitFor(() => expect(mock.removeAll).toHaveBeenCalledTimes(1));
+  });
+
   it("reports a create failure surfaced through runtime.lastError", async () => {
     // `chrome.contextMenus.create` never throws — it reports asynchronously via
     // `runtime.lastError`, so the old try/catch caught nothing and Chrome logged a bare
