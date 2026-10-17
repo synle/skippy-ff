@@ -144,12 +144,12 @@ describe("background context-menu rebuild", () => {
       cb({ pageUrl: "https://www.netflix.com/browse", contexts: ["action"] });
 
     expect(mock.update).toHaveBeenCalledWith(
-      "SKIPPYMENUIDPREFIXnetflix.com:root",
+      "skippy:netflix.com:root",
       { visible: true },
       expect.any(Function),
     );
     expect(mock.update.mock.calls.filter(([, props]) => props.visible).map(([id]) => id)).toEqual([
-      "SKIPPYMENUIDPREFIXnetflix.com:root",
+      "skippy:netflix.com:root",
       "skippy:search",
     ]);
     expect(mock.update.mock.calls.filter(([, props]) => !props.visible)).toHaveLength(

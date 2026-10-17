@@ -213,6 +213,8 @@ async function handleContextMenuClick(info) {
 
   // Flag action: skippy:<host>:flag:<flagKey>
   if (action === "flag" && parts.length === 4) {
+    const existingOverride =
+      current.siteOverrides[host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
     await SkippyStorage.saveSkippySettings({
       siteOverrides: {
         ...current.siteOverrides,

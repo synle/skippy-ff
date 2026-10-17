@@ -126,10 +126,16 @@ describe("buildSkippyContextMenuItems", () => {
     }
   });
 
-  it("builds one top-level settings entry", async () => {
-    const items = buildSkippyRootMenuItems(["https://www.crunchyroll.com/*"]);
-    expect(items.map((item) => item.title)).toEqual(["Skippy Options"]);
-    expect(items[0].parentId).toBeUndefined();
+  it("builds enabled title providers in configured order", async () => {
+    const settings = await getSkippySettings();
+    const items = buildSkippyRootMenuItems(["https://www.crunchyroll.com/*"], settings);
+    expect(items.map((item) => item.title)).toEqual([
+      "Search Movie Information",
+      "Rotten Tomatoes",
+      "Google",
+    ]);
+    expect(items[1].id).toBe("skippy:search:rottentomatoes");
+    expect(items[2].id).toBe("skippy:search:google");
   });
 
   it("uses unique ids per item — Chrome rejects duplicate ids", async () => {
@@ -157,7 +163,7 @@ describe("buildSkippySiteVisibilityUpdates", () => {
       buildSkippySiteVisibilityUpdates(SKIPPY_SITES, "https://www.netflix.com/title/1"),
     ).toEqual(
       SKIPPY_SITES.map((site) => ({
-        id: `SKIPPYMENUIDPREFIX${site.host}:root`,
+        id: `skippy:${site.host}:root`,
         visible: site.host === "netflix.com",
       })),
     );
@@ -207,12 +213,15 @@ describe("title search helpers", () => {
     );
   });
 
-  it("builds encoded IMDb and Rotten Tomatoes URLs", () => {
+  it("builds encoded provider URLs from metadata", () => {
     expect(buildTitleSearchUrl("imdb", "The Bear & Me")).toBe(
       "https://www.imdb.com/find/?q=The%20Bear%20%26%20Me",
     );
     expect(buildTitleSearchUrl("rottentomatoes", "The Bear & Me")).toBe(
       "https://www.rottentomatoes.com/search?search=The%20Bear%20%26%20Me",
+    );
+    expect(buildTitleSearchUrl("google", "The Bear & Me")).toBe(
+      "https://www.google.com/search?q=The%20Bear%20%26%20Me",
     );
     expect(buildTitleSearchUrl("imdb", "")).toBe("");
   });
