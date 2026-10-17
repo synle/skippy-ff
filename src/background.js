@@ -81,7 +81,7 @@ function createMenuItem(payload) {
  * `chrome.contextMenus.create` is append-only and per-item `update` can't add or remove
  * children, so the cheapest way to reflect a settings change (enable toggle flipped,
  * override engaged, master flag changed) is to wipe and recreate the whole tree. The tree
- * is ~9 items × 11 sites = ~100 items; well within Chrome's contextMenu limits.
+ * has one root, one settings row, and one branch per supported site.
  *
  * Per-item failures are caught and logged, not rethrown — Chrome will reject duplicate ids
  * if a previous `removeAll` is still settling, and we don't want one stale id to take down
@@ -107,6 +107,10 @@ function rebuildContextMenus() {
     );
     const settings = await SkippyStorage.getSkippySettings();
     const pending = [];
+    const urlPatterns = SkippyStorage.SKIPPY_SITES.flatMap((site) => site.urlPatterns);
+    for (const payload of SkippyMenu.buildSkippyRootMenuItems(urlPatterns)) {
+      pending.push(createMenuItem(payload));
+    }
     for (const site of SkippyStorage.SKIPPY_SITES) {
       const items = SkippyMenu.buildSkippyContextMenuItems(settings, site);
       for (const payload of items) pending.push(createMenuItem(payload));

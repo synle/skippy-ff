@@ -12,6 +12,7 @@ await import("../src/helpers/menu.js");
 
 const {
   buildSkippyContextMenuItems,
+  buildSkippyRootMenuItems,
   parseSkippyMenuItemId,
   SKIPPY_MENU_FLAG_LABELS,
   SKIPPY_MENU_PARENT_TITLE,
@@ -30,21 +31,20 @@ describe("buildSkippyContextMenuItems", () => {
     reset();
   });
 
-  it("shape A — site enabled, follows master: shows parent + enable(on) + follow(on) + 4 flags(on) + open settings", async () => {
+  it("shape A — site enabled, follows master: shows site branch + enable(on) + follow(on) + 4 flags(on)", async () => {
     const settings = await getSkippySettings();
     const items = buildSkippyContextMenuItems(settings, crunchyroll);
 
     // Order matters — Chrome renders in creation order.
     const titles = items.filter((i) => i.title).map((i) => i.title);
     expect(titles).toEqual([
-      SKIPPY_MENU_PARENT_TITLE,
+      "Crunchyroll Options",
       "Enable on Crunchyroll",
       "Follow master settings",
       SKIPPY_MENU_FLAG_LABELS.skipIntro,
       SKIPPY_MENU_FLAG_LABELS.skipRecap,
       SKIPPY_MENU_FLAG_LABELS.skipCredits,
       SKIPPY_MENU_FLAG_LABELS.nextEpisode,
-      "Open Skippy settings…",
     ]);
 
     expect(findItem(items, ":enable").checked).toBe(true);
@@ -57,17 +57,13 @@ describe("buildSkippyContextMenuItems", () => {
     expect(items.filter((i) => i.type === "separator")).toHaveLength(2);
   });
 
-  it("shape B — site disabled: only parent + enable(off) + open settings, no flags or separators", async () => {
+  it("shape B — site disabled: only site branch + enable(off), no flags or separators", async () => {
     await saveSkippySettings({ enabledSites: { "crunchyroll.com": false } });
     const settings = await getSkippySettings();
     const items = buildSkippyContextMenuItems(settings, crunchyroll);
 
     const titles = items.filter((i) => i.title).map((i) => i.title);
-    expect(titles).toEqual([
-      SKIPPY_MENU_PARENT_TITLE,
-      "Enable on Crunchyroll",
-      "Open Skippy settings…",
-    ]);
+    expect(titles).toEqual(["Crunchyroll Options", "Enable on Crunchyroll"]);
     expect(findItem(items, ":enable").checked).toBe(false);
     expect(items.filter((i) => i.type === "separator")).toHaveLength(0);
     // Flag items must not be present.
@@ -121,10 +117,16 @@ describe("buildSkippyContextMenuItems", () => {
     const settings = await getSkippySettings();
     const items = buildSkippyContextMenuItems(settings, crunchyroll);
     const parent = items[0];
-    expect(parent.parentId).toBeUndefined();
+    expect(parent.parentId).toBe("skippy:root");
     for (const child of items.slice(1)) {
       expect(child.parentId).toBe(parent.id);
     }
+  });
+
+  it("builds one root menu with a separate settings entry", async () => {
+    const items = buildSkippyRootMenuItems(["https://www.crunchyroll.com/*"]);
+    expect(items.map((item) => item.title)).toEqual(["Skippy", "Other Skippy Settings"]);
+    expect(items[1].parentId).toBe(items[0].id);
   });
 
   it("uses unique ids per item — Chrome rejects duplicate ids", async () => {
@@ -164,6 +166,13 @@ describe("parseSkippyMenuItemId", () => {
   it("parses the options action", () => {
     expect(parseSkippyMenuItemId("skippy:max.com:options")).toEqual({
       host: "max.com",
+      action: "options",
+    });
+  });
+
+  it("parses the root settings action", () => {
+    expect(parseSkippyMenuItemId("skippy:settings")).toEqual({
+      host: "settings",
       action: "options",
     });
   });

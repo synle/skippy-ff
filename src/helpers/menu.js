@@ -11,8 +11,34 @@ const SKIPPY_MENU_FLAG_LABELS = {
   nextEpisode: "Auto start next episode",
 };
 
-/** Submenu title used as the parent label for every site's context menu tree. */
+/** Root submenu title used for the complete Skippy context menu tree. */
 const SKIPPY_MENU_PARENT_TITLE = "Skippy";
+
+/** Root menu item id shared by all site branches and the settings row. */
+const SKIPPY_MENU_ROOT_ID = `${SKIPPY_MENU_ID_PREFIX}root`;
+
+/**
+ * Build the single top-level Skippy menu and its separate settings entry.
+ * @param {ReadonlyArray<string>} urlPatterns URL patterns where Skippy is supported.
+ * @returns {Array<object>} Root and settings menu payloads.
+ */
+function buildSkippyRootMenuItems(urlPatterns) {
+  return [
+    {
+      id: SKIPPY_MENU_ROOT_ID,
+      title: SKIPPY_MENU_PARENT_TITLE,
+      contexts: ["all"],
+      documentUrlPatterns: [...urlPatterns],
+    },
+    {
+      id: `${SKIPPY_MENU_ID_PREFIX}settings`,
+      parentId: SKIPPY_MENU_ROOT_ID,
+      title: "Other Skippy Settings",
+      contexts: ["all"],
+      documentUrlPatterns: [...urlPatterns],
+    },
+  ];
+}
 
 /**
  * Build the array of `chrome.contextMenus.create` payloads for one site, given current
@@ -20,7 +46,7 @@ const SKIPPY_MENU_PARENT_TITLE = "Skippy";
  * preserves creation order in the rendered menu.
  *
  * Shape (when site enabled):
- *   ┌ Skippy ▶
+ *   ┌ <Site> Options ▶
  *   │   ☑ Enable on <Label>
  *   │   ─────
  *   │   ☑ Follow master settings
@@ -29,10 +55,9 @@ const SKIPPY_MENU_PARENT_TITLE = "Skippy";
  *   │   ☑ Skip Credits
  *   │   ☑ Auto start next episode
  *   │   ─────
- *   │   Open Skippy settings…
  *
  * When site disabled, the four flag checkboxes + the "Follow master settings" row + both
- * separators are omitted — only Enable + Open settings… show. This matches the visibility
+ * separators are omitted — only Enable shows. This matches the visibility
  * rule from the options-page site cards: nothing else is actionable until the site is on.
  *
  * Every item carries the site's `documentUrlPatterns` so Chrome only renders the menu on
@@ -59,10 +84,11 @@ function buildSkippyContextMenuItems(settings, site) {
   const urlPatterns = /** @type {string[]} */ ([...site.urlPatterns]);
   const items = [];
 
-  // Parent submenu — title is constant so users learn the location regardless of which site they're on.
+  // One site branch replaces the previous repeated top-level "Skippy" entries.
   items.push({
     id: parentId,
-    title: SKIPPY_MENU_PARENT_TITLE,
+    parentId: SKIPPY_MENU_ROOT_ID,
+    title: `${site.label} Options`,
     contexts: ["all"],
     documentUrlPatterns: urlPatterns,
   });
@@ -120,15 +146,6 @@ function buildSkippyContextMenuItems(settings, site) {
     });
   }
 
-  // Open settings — always shown so a power-user can jump from any page.
-  items.push({
-    id: `${SKIPPY_MENU_ID_PREFIX}${site.host}:options`,
-    parentId,
-    title: "Open Skippy settings…",
-    contexts: ["all"],
-    documentUrlPatterns: urlPatterns,
-  });
-
   return items;
 }
 
@@ -141,6 +158,9 @@ function buildSkippyContextMenuItems(settings, site) {
  */
 function parseSkippyMenuItemId(menuItemId) {
   if (typeof menuItemId !== "string" || !menuItemId.startsWith(SKIPPY_MENU_ID_PREFIX)) return null;
+  if (menuItemId === `${SKIPPY_MENU_ID_PREFIX}settings`) {
+    return { host: "settings", action: "options" };
+  }
   const parts = menuItemId.split(":");
   // Expected forms:
   //   skippy:<host>:enable
@@ -162,9 +182,11 @@ function parseSkippyMenuItemId(menuItemId) {
 }
 
 globalThis.SkippyMenu = {
+  buildSkippyRootMenuItems,
   buildSkippyContextMenuItems,
   parseSkippyMenuItemId,
   SKIPPY_MENU_ID_PREFIX,
   SKIPPY_MENU_FLAG_LABELS,
   SKIPPY_MENU_PARENT_TITLE,
+  SKIPPY_MENU_ROOT_ID,
 };

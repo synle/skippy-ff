@@ -293,4 +293,24 @@ describe("SkippyCore.skippyStart polling loop", () => {
     expect(warn.mock.calls.length).toBe(afterFirst);
     warn.mockRestore();
   });
+
+  it("stops polling while the document is hidden and resumes when visible", async () => {
+    const find = vi.fn(() => null);
+    let visibility = "visible";
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => visibility,
+    });
+    skippyStart(find, { intervalMs: 100 });
+    await vi.advanceTimersByTimeAsync(100);
+    const callsBeforeHidden = find.mock.calls.length;
+    visibility = "hidden";
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(find).toHaveBeenCalledTimes(callsBeforeHidden);
+    visibility = "visible";
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(find.mock.calls.length).toBeGreaterThan(callsBeforeHidden);
+  });
 });

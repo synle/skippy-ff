@@ -273,6 +273,8 @@ function skippyStart(findSkipButton, options = {}) {
     options.intervalMs ?? SkippyStorage.SKIPPY_DEFAULTS.pollIntervalMs ?? 500;
   const cooldownMs = options.cooldownMs ?? 2000;
   const lastClickedAt = new WeakMap();
+  let pollTimer = null;
+  let isPolling = document.visibilityState === "visible";
 
   /** Last adapter error message reported by `tick`. Dedupes the warning across ticks. */
   let lastAdapterError = "";
@@ -310,6 +312,8 @@ function skippyStart(findSkipButton, options = {}) {
    * @returns {void}
    */
   function tick() {
+    pollTimer = null;
+    if (!isPolling) return;
     let intervalMs = fallbackIntervalMs;
     try {
       if (settings) {
@@ -340,12 +344,27 @@ function skippyStart(findSkipButton, options = {}) {
         console.warn("[Skippy] adapter threw during poll — continuing", err);
       }
     } finally {
-      setTimeout(tick, intervalMs);
+      if (isPolling) pollTimer = setTimeout(tick, intervalMs);
     }
   }
 
+  /** Pause DOM polling while the streaming tab is hidden and resume on tab visibility. */
+  function handleVisibilityChange() {
+    isPolling = document.visibilityState === "visible";
+    if (!isPolling) {
+      if (pollTimer !== null) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+      return;
+    }
+    if (pollTimer === null) pollTimer = setTimeout(tick, 0);
+  }
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
   skippyLog("[Skippy] polling started", { host: location.host, fallbackIntervalMs, cooldownMs });
-  setTimeout(tick, fallbackIntervalMs);
+  if (isPolling) pollTimer = setTimeout(tick, fallbackIntervalMs);
 }
 
 // Expose for site adapters.

@@ -24,3 +24,18 @@ There is no separate Hulu adapter — Hulu's catalog now streams through Disney+
 8. **All diagnostic logs go through `SkippyCore.skippyLog` / `skippyDLog`** — silent unless `settings.verboseLogging` is on. The `[Skippy] clicking …` line is the only exception (always on, so users can confirm a skip fired).
 9. **Settings defaults are additive**, never breaking. New flag → add to `SKIPPY_DEFAULTS`, hydrate in `options.js`, render a row in `options.html`, default to a value that preserves existing behavior.
 10. **Release dispatch never auto-pins to HEAD.** `release-official` is `workflow_dispatch` only; tag is derived via `synle/workflows/.../resolve-tag` (no `github.ref_name` fallback). See `ARCHITECTURE.md` § CI/CD.
+
+## Crash prevention
+
+The previous menu/polling incident had two compounding causes:
+
+- The background worker created one top-level `Skippy` submenu per supported site. Each branch repeated the same visible label, multiplied context-menu entries and rebuild work, and made concurrent rebuild failures harder to diagnose.
+- Every supported content-script tab kept re-arming a DOM polling timeout, including hidden tabs. Many open streaming tabs therefore continued scanning and handling timers when the user could not see them.
+
+Prevent regressions:
+
+- Keep one shared top-level context-menu root. Put site-specific options under URL-scoped `<Site> Options` branches, and keep global settings in one separate item.
+- Treat `SKIPPY_SITES` as data, not permission to create duplicate top-level UI. Test menu item count, IDs, parent relationships, and URL scoping.
+- Every content-script polling loop must have one owned timeout, clear it when `document.visibilityState !== "visible"`, and resume only from `visibilitychange`. Do not use unbounded `setInterval` or create a second timer on resume.
+- Add regression tests for hidden-tab pause/resume and for background menu rebuild serialization whenever menu or polling lifecycle code changes.
+- Before diagnosing a browser crash as a site-adapter issue, inspect timer counts, context-menu item counts, rebuild concurrency, and adapter exceptions. Reproduce with several supported tabs and hidden tabs before changing selectors.

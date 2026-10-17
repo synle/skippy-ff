@@ -118,7 +118,7 @@ describe("background context-menu rebuild", () => {
     await vi.waitFor(() => expect(mock.create.mock.calls.length).toBeGreaterThan(afterFirst));
   });
 
-  it("creates one menu tree per supported site on the initial build", async () => {
+  it("creates one root menu and one site branch per supported site", async () => {
     const mock = createBackgroundChromeMock();
     await loadBackground(mock.chrome);
     await vi.waitFor(() => expect(mock.removeAll).toHaveBeenCalledTimes(1));
@@ -126,7 +126,10 @@ describe("background context-menu rebuild", () => {
     const roots = mock.create.mock.calls
       .map(([payload]) => payload.id)
       .filter((id) => id.endsWith(":root"));
-    expect(roots.length).toBe(globalThis.SkippyStorage.SKIPPY_SITES.length);
+    expect(roots).toEqual([
+      "skippy:root",
+      ...globalThis.SkippyStorage.SKIPPY_SITES.map((site) => `skippy:${site.host}:root`),
+    ]);
   });
 
   it("reports a create failure surfaced through runtime.lastError", async () => {
@@ -201,7 +204,7 @@ describe("background context-menu rebuild", () => {
     const roots = mock.create.mock.calls
       .map(([payload]) => payload.id)
       .filter((id) => id.endsWith(":root"));
-    expect(roots.length).toBe(globalThis.SkippyStorage.SKIPPY_SITES.length);
+    expect(roots.length).toBe(globalThis.SkippyStorage.SKIPPY_SITES.length + 1);
   });
 });
 
@@ -256,7 +259,7 @@ describe("background context-menu click routing", () => {
   });
 
   it("opens the options page without touching storage", async () => {
-    for (const cb of mock.listeners.menuClicked) cb({ menuItemId: "skippy:netflix.com:options" });
+    for (const cb of mock.listeners.menuClicked) cb({ menuItemId: "skippy:settings" });
     expect(mock.chrome.runtime.openOptionsPage).toHaveBeenCalled();
     expect(mock.set).not.toHaveBeenCalled();
   });

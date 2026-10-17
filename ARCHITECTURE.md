@@ -80,7 +80,7 @@ Site-agnostic primitives. **Classic script** (MV3 content scripts can't be ES mo
 
 - **Visibility gating** — `skippyIsVisible` is the strict gate, eight fail-fast checks in order: `isConnected` → `closest('[aria-hidden="true"]')` → `closest('[inert]')` → computed `display !== "none"` → computed `visibility !== "hidden"` → `getBoundingClientRect()` > 0×0 → computed `opacity > 0` → computed `pointer-events !== "none"`. The aria-hidden + inert walks use `closest` to cover ancestor cascades in a single DOM read. The opacity gate is strictly > 0 (anything not fully transparent counts) so a button mid-fade-in starts counting as visible the moment it paints any pixels; the pointer-events gate is a tie-breaker — programmatic `.click()` bypasses it, so it only fires when paired with another gate (typically the Crunchyroll `opacity:0 + pointer-events:none` idle fade). `skippyIsPresent` is the permissive variant — same first six gates, drops opacity + pointer-events. Use it when a site fades skip buttons while keeping their click handler wired (Apple TV's chrome idle). Author-intent signals (aria-hidden + inert) are kept on in both variants.
 - **Click dispatch** — `skippyClick` handles four cases: direct click target (`<button>`, `<a>`, `[role="button"]`), open shadow root with inner button, hit-test fallback via `document.elementFromPoint`, and a last-resort composed MouseEvent. Composed events are required so listeners inside enclosing shadow roots fire.
-- **Polling loop** — `skippyStart(adapter, options?)` uses a `setTimeout` re-arm pattern so it can read `settings.pollIntervalMs` on every tick — a slider change in the options page takes effect on the next iteration without a restart. The interval is clamped via `SkippyStorage.clampPollIntervalMs` as a defensive fallback. Each click has a per-element cooldown (default 2000 ms) so a still-mounted button isn't re-clicked while the site advances. Settings are loaded once + re-loaded on `chrome.storage.onChanged`.
+- **Polling loop** — `skippyStart(adapter, options?)` uses a `setTimeout` re-arm pattern so it can read `settings.pollIntervalMs` on every tick — a slider change in the options page takes effect on the next iteration without a restart. The loop clears its pending timeout while `document.visibilityState` is not `visible` and resumes on `visibilitychange`, avoiding DOM scans in background tabs without using window focus (which is unreliable across multiple displays). The interval is clamped via `SkippyStorage.clampPollIntervalMs` as a defensive fallback. Each click has a per-element cooldown (default 2000 ms) so a still-mounted button isn't re-clicked while the site advances. Settings are loaded once + re-loaded on `chrome.storage.onChanged`.
 - **Verbose logging** — `skippyLog` and `skippyDLog` (throttled) gate all diagnostic output behind `settings.verboseLogging`. The single "[Skippy] clicking …" line is exempt so users can confirm a skip fired without enabling the full verbose stream.
 
 ### `src/content/skippy-<site>.js` — site adapters
@@ -107,7 +107,7 @@ Single-page settings UI. Vite is the bundler — `options.html` is the only HTML
 
 ### `src/helpers/menu.js`
 
-Pure helper for the background service worker. `buildSkippyContextMenuItems(settings, site)` returns the array of `chrome.contextMenus.create` payloads for one site — order matters because Chrome renders in creation order. `parseSkippyMenuItemId(id)` resolves a click back to `{ host, action, flag? }`. Exposed via `globalThis.SkippyMenu`. Extracted into its own helper so the menu shape can be unit-tested without the SW runtime.
+Pure helper for the background service worker. `buildSkippyRootMenuItems(urlPatterns)` builds the single root and settings entry. `buildSkippyContextMenuItems(settings, site)` returns one URL-scoped site branch. `parseSkippyMenuItemId(id)` resolves a click back to `{ host, action, flag? }`. Exposed via `globalThis.SkippyMenu`. Extracted into its own helper so the menu shape can be unit-tested without the SW runtime.
 
 ### `src/background.js`
 
@@ -115,7 +115,7 @@ Background service worker. Classic SW (not `type: "module"`) that `importScripts
 
 1. Rebuilds the context-menu tree on `onInstalled`, `onStartup`, and any `chrome.storage.onChanged.sync` event.
 2. Routes `contextMenus.onClicked` through `parseSkippyMenuItemId` and writes the resulting patch back through `SkippyStorage.saveSkippySettings`. Toggling any flag row sets `siteOverrides[host].useOverride = true` so the user's click has an observable effect (same rule as the options-page card).
-3. Opens the options page on the "Open Skippy settings…" item via `chrome.runtime.openOptionsPage()`.
+3. Opens the options page on the "Other Skippy Settings" item via `chrome.runtime.openOptionsPage()`.
 
 The menu is per-site and scoped via each item's `documentUrlPatterns` (mirrored from `SKIPPY_SITES[*].urlPatterns`), so Chrome only surfaces the "Skippy" submenu on pages where the corresponding content script runs.
 
