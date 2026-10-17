@@ -11,12 +11,6 @@ const SKIPPY_MENU_FLAG_LABELS = {
   nextEpisode: "Auto start next episode",
 };
 
-/** Root submenu title used for the complete Skippy context menu tree. */
-const SKIPPY_MENU_PARENT_TITLE = "Skippy";
-
-/** Root menu item id shared by all site branches and the settings row. */
-const SKIPPY_MENU_ROOT_ID = `${SKIPPY_MENU_ID_PREFIX}root`;
-
 /** Escape a Chrome match-pattern literal before expanding its wildcard tokens. */
 function escapeMatchPatternLiteral(value) {
   return value.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
@@ -54,22 +48,15 @@ function buildSkippySiteVisibilityUpdates(sites, pageUrl) {
 }
 
 /**
- * Build the single top-level Skippy menu and its separate settings entry.
+ * Build the top-level Skippy settings entries.
  * @param {ReadonlyArray<string>} urlPatterns URL patterns where Skippy is supported.
- * @returns {Array<object>} Root and settings menu payloads.
+ * @returns {Array<object>} Settings menu payloads.
  */
 function buildSkippyRootMenuItems(urlPatterns) {
   return [
     {
-      id: SKIPPY_MENU_ROOT_ID,
-      title: SKIPPY_MENU_PARENT_TITLE,
-      contexts: ["all"],
-      documentUrlPatterns: [...urlPatterns],
-    },
-    {
       id: `${SKIPPY_MENU_ID_PREFIX}settings`,
-      parentId: SKIPPY_MENU_ROOT_ID,
-      title: "Other Skippy Settings",
+      title: "Skippy Other Settings",
       contexts: ["all"],
       documentUrlPatterns: [...urlPatterns],
     },
@@ -82,7 +69,7 @@ function buildSkippyRootMenuItems(urlPatterns) {
  * preserves creation order in the rendered menu.
  *
  * Shape (when site enabled):
- *   ┌ <Site> Options ▶
+ *   ┌ Skippy <Site> Settings ▶
  *   │   ☑ Enable on <Label>
  *   │   ─────
  *   │   ☑ Follow master settings
@@ -120,11 +107,10 @@ function buildSkippyContextMenuItems(settings, site) {
   const urlPatterns = /** @type {string[]} */ ([...site.urlPatterns]);
   const items = [];
 
-  // One site branch replaces the previous repeated top-level "Skippy" entries.
+  // Site settings are top-level entries so toolbar and right-click menus use the same labels.
   items.push({
     id: parentId,
-    parentId: SKIPPY_MENU_ROOT_ID,
-    title: `${site.label} Options`,
+    title: `Skippy ${site.label} Settings`,
     contexts: ["all"],
     documentUrlPatterns: urlPatterns,
   });
@@ -224,6 +210,4 @@ globalThis.SkippyMenu = {
   parseSkippyMenuItemId,
   SKIPPY_MENU_ID_PREFIX,
   SKIPPY_MENU_FLAG_LABELS,
-  SKIPPY_MENU_PARENT_TITLE,
-  SKIPPY_MENU_ROOT_ID,
 };

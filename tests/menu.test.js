@@ -39,7 +39,7 @@ describe("buildSkippyContextMenuItems", () => {
     // Order matters — Chrome renders in creation order.
     const titles = items.filter((i) => i.title).map((i) => i.title);
     expect(titles).toEqual([
-      "Crunchyroll Options",
+      "Skippy Crunchyroll Settings",
       "Enable on Crunchyroll",
       "Follow master settings",
       SKIPPY_MENU_FLAG_LABELS.skipIntro,
@@ -64,7 +64,7 @@ describe("buildSkippyContextMenuItems", () => {
     const items = buildSkippyContextMenuItems(settings, crunchyroll);
 
     const titles = items.filter((i) => i.title).map((i) => i.title);
-    expect(titles).toEqual(["Crunchyroll Options", "Enable on Crunchyroll"]);
+    expect(titles).toEqual(["Skippy Crunchyroll Settings", "Enable on Crunchyroll"]);
     expect(findItem(items, ":enable").checked).toBe(false);
     expect(items.filter((i) => i.type === "separator")).toHaveLength(0);
     // Flag items must not be present.
@@ -114,20 +114,20 @@ describe("buildSkippyContextMenuItems", () => {
     }
   });
 
-  it("nests every child under the site's parent id", async () => {
+  it("keeps the site settings branch top-level and nests its controls", async () => {
     const settings = await getSkippySettings();
     const items = buildSkippyContextMenuItems(settings, crunchyroll);
     const parent = items[0];
-    expect(parent.parentId).toBe("skippy:root");
+    expect(parent.parentId).toBeUndefined();
     for (const child of items.slice(1)) {
       expect(child.parentId).toBe(parent.id);
     }
   });
 
-  it("builds one root menu with a separate settings entry", async () => {
+  it("builds one top-level settings entry", async () => {
     const items = buildSkippyRootMenuItems(["https://www.crunchyroll.com/*"]);
-    expect(items.map((item) => item.title)).toEqual(["Skippy", "Other Skippy Settings"]);
-    expect(items[1].parentId).toBe(items[0].id);
+    expect(items.map((item) => item.title)).toEqual(["Skippy Other Settings"]);
+    expect(items[0].parentId).toBeUndefined();
   });
 
   it("uses unique ids per item — Chrome rejects duplicate ids", async () => {

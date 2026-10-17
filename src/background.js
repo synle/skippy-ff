@@ -100,7 +100,7 @@ function createMenuItem(payload) {
  * `chrome.contextMenus.create` is append-only and per-item `update` can't add or remove
  * children, so the cheapest way to reflect a settings change (enable toggle flipped,
  * override engaged, master flag changed) is to wipe and recreate the whole tree. The tree
- * has one root, one settings row, and one branch per supported site.
+ * has one settings row and one top-level branch per supported site.
  *
  * Per-item failures are caught and logged, not rethrown — Chrome will reject duplicate ids
  * if a previous `removeAll` is still settling, and we don't want one stale id to take down

@@ -128,10 +128,9 @@ describe("background context-menu rebuild", () => {
     const roots = mock.create.mock.calls
       .map(([payload]) => payload.id)
       .filter((id) => id.endsWith(":root"));
-    expect(roots).toEqual([
-      "skippy:root",
-      ...globalThis.SkippyStorage.SKIPPY_SITES.map((site) => `skippy:${site.host}:root`),
-    ]);
+    expect(roots).toEqual(
+      globalThis.SkippyStorage.SKIPPY_SITES.map((site) => `skippy:${site.host}:root`),
+    );
   });
 
   it("shows only the current site's branch when Chrome opens the toolbar menu", async () => {
@@ -239,7 +238,7 @@ describe("background context-menu rebuild", () => {
     const roots = mock.create.mock.calls
       .map(([payload]) => payload.id)
       .filter((id) => id.endsWith(":root"));
-    expect(roots.length).toBe(globalThis.SkippyStorage.SKIPPY_SITES.length + 1);
+    expect(roots.length).toBe(globalThis.SkippyStorage.SKIPPY_SITES.length);
   });
 });
 
