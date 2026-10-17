@@ -115,9 +115,9 @@ Background service worker. Classic SW (not `type: "module"`) that `importScripts
 
 1. Rebuilds the settings menu on `onInstalled`, `onStartup`, and any `chrome.storage.onChanged.sync` event. On `contextMenus.onShown`, updates each site branch's visibility from the current tab URL because browser action menus do not reliably apply `documentUrlPatterns`.
 2. Routes `contextMenus.onClicked` through `parseSkippyMenuItemId` and writes the resulting patch back through `SkippyStorage.saveSkippySettings`. Toggling any flag row sets `siteOverrides[host].useOverride = true` so the user's click has an observable effect (same rule as the options-page card).
-3. Opens the options page on the "Other Skippy Settings" item via `chrome.runtime.openOptionsPage()`.
+3. Opens the options page on the "Skippy Options" item via `chrome.runtime.openOptionsPage()`.
 
-The menu uses consistent top-level labels: `Skippy <Site> Settings` and `Skippy Other Settings`. Each entry is scoped via `documentUrlPatterns` (mirrored from `SKIPPY_SITES[*].urlPatterns`). Right-click menus use that browser-side filter; toolbar menus additionally receive explicit `onShown` visibility updates so only the current site's branch appears.
+The menu uses consistent top-level labels: `Skippy <Site> Settings` and `Skippy Options`. Each entry is scoped via `documentUrlPatterns` (mirrored from `SKIPPY_SITES[*].urlPatterns`). Right-click menus use that browser-side filter; toolbar menus additionally receive explicit `onShown` visibility updates so no entries appear on unsupported pages.
 
 ## Data flow
 

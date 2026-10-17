@@ -126,7 +126,7 @@ describe("buildSkippyContextMenuItems", () => {
 
   it("builds one top-level settings entry", async () => {
     const items = buildSkippyRootMenuItems(["https://www.crunchyroll.com/*"]);
-    expect(items.map((item) => item.title)).toEqual(["Skippy Other Settings"]);
+    expect(items.map((item) => item.title)).toEqual(["Skippy Options"]);
     expect(items[0].parentId).toBeUndefined();
   });
 
@@ -153,12 +153,13 @@ describe("buildSkippySiteVisibilityUpdates", () => {
   it("matches only the site owning the current page URL", () => {
     expect(
       buildSkippySiteVisibilityUpdates(SKIPPY_SITES, "https://www.netflix.com/title/1"),
-    ).toEqual(
-      SKIPPY_SITES.map((site) => ({
+    ).toEqual([
+      { id: "skippy:settings", visible: true },
+      ...SKIPPY_SITES.map((site) => ({
         id: `skippy:${site.host}:root`,
         visible: site.host === "netflix.com",
       })),
-    );
+    ]);
   });
 
   it("hides every site branch for unsupported URLs", () => {

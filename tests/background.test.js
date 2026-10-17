@@ -147,6 +147,7 @@ describe("background context-menu rebuild", () => {
       expect.any(Function),
     );
     expect(mock.update.mock.calls.filter(([, props]) => props.visible).map(([id]) => id)).toEqual([
+      "skippy:settings",
       "skippy:netflix.com:root",
     ]);
     expect(mock.update.mock.calls.filter(([, props]) => !props.visible)).toHaveLength(
@@ -162,7 +163,7 @@ describe("background context-menu rebuild", () => {
 
     for (const cb of mock.listeners.shown) cb({});
 
-    expect(mock.update).toHaveBeenCalledTimes(globalThis.SkippyStorage.SKIPPY_SITES.length);
+    expect(mock.update).toHaveBeenCalledTimes(globalThis.SkippyStorage.SKIPPY_SITES.length + 1);
     expect(mock.update.mock.calls.every(([, props]) => props.visible === false)).toBe(true);
   });
 

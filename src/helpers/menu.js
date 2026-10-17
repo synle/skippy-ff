@@ -41,10 +41,16 @@ function matchesChromeUrlPattern(pageUrl, pattern) {
  * @returns {Array<{id: string, visible: boolean}>} One update for each site branch.
  */
 function buildSkippySiteVisibilityUpdates(sites, pageUrl) {
-  return sites.map((site) => ({
-    id: `SKIPPYMENUIDPREFIX{site.host}:root`,
-    visible: site.urlPatterns.some((pattern) => matchesChromeUrlPattern(pageUrl, pattern)),
-  }));
+  const hasMatchingSite = sites.some((site) =>
+    site.urlPatterns.some((pattern) => matchesChromeUrlPattern(pageUrl, pattern)),
+  );
+  return [
+    { id: `${SKIPPY_MENU_ID_PREFIX}settings`, visible: hasMatchingSite },
+    ...sites.map((site) => ({
+      id: `SKIPPYMENUIDPREFIX{site.host}:root`,
+      visible: site.urlPatterns.some((pattern) => matchesChromeUrlPattern(pageUrl, pattern)),
+    })),
+  ];
 }
 
 /**
@@ -56,7 +62,7 @@ function buildSkippyRootMenuItems(urlPatterns) {
   return [
     {
       id: `${SKIPPY_MENU_ID_PREFIX}settings`,
-      title: "Skippy Other Settings",
+      title: "Skippy Options",
       contexts: ["all"],
       documentUrlPatterns: [...urlPatterns],
     },
