@@ -17,6 +17,42 @@ const SKIPPY_MENU_PARENT_TITLE = "Skippy";
 /** Root menu item id shared by all site branches and the settings row. */
 const SKIPPY_MENU_ROOT_ID = `${SKIPPY_MENU_ID_PREFIX}root`;
 
+/** Escape a Chrome match-pattern literal before expanding its wildcard tokens. */
+function escapeMatchPatternLiteral(value) {
+  return value.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Check whether a page URL matches one Chrome match pattern.
+ * @param {string} pageUrl Current tab URL supplied by `contextMenus.onShown`.
+ * @param {string} pattern Chrome match pattern registered for a supported site.
+ * @returns {boolean} Whether the URL belongs to the pattern.
+ */
+function matchesChromeUrlPattern(pageUrl, pattern) {
+  if (typeof pageUrl !== "string" || typeof pattern !== "string") return false;
+  try {
+    const expression = `^escapeMatchPatternLiteral(pattern).replaceAll("*",".*")`;
+    return new RegExp(expression).test(pageUrl);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build visibility updates for site branches when Chrome renders the toolbar menu.
+ * Chrome applies `documentUrlPatterns` to right-click menus, but not consistently to
+ * extension action menus, so branch visibility must be refreshed on every menu show.
+ * @param {ReadonlyArray<{host: string, urlPatterns: ReadonlyArray<string>}>} sites Supported sites.
+ * @param {unknown} pageUrl Current tab URL from Chrome.
+ * @returns {Array<{id: string, visible: boolean}>} One update for each site branch.
+ */
+function buildSkippySiteVisibilityUpdates(sites, pageUrl) {
+  return sites.map((site) => ({
+    id: `SKIPPYMENUIDPREFIX{site.host}:root`,
+    visible: site.urlPatterns.some((pattern) => matchesChromeUrlPattern(pageUrl, pattern)),
+  }));
+}
+
 /**
  * Build the single top-level Skippy menu and its separate settings entry.
  * @param {ReadonlyArray<string>} urlPatterns URL patterns where Skippy is supported.
@@ -182,6 +218,7 @@ function parseSkippyMenuItemId(menuItemId) {
 }
 
 globalThis.SkippyMenu = {
+  buildSkippySiteVisibilityUpdates,
   buildSkippyRootMenuItems,
   buildSkippyContextMenuItems,
   parseSkippyMenuItemId,

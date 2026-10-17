@@ -12,6 +12,7 @@ await import("../src/helpers/menu.js");
 
 const {
   buildSkippyContextMenuItems,
+  buildSkippySiteVisibilityUpdates,
   buildSkippyRootMenuItems,
   parseSkippyMenuItemId,
   SKIPPY_MENU_FLAG_LABELS,
@@ -145,6 +146,27 @@ describe("buildSkippyContextMenuItems", () => {
     for (const id of nfItems.map((i) => i.id)) {
       expect(crIds.has(id)).toBe(false);
     }
+  });
+});
+
+describe("buildSkippySiteVisibilityUpdates", () => {
+  it("matches only the site owning the current page URL", () => {
+    expect(
+      buildSkippySiteVisibilityUpdates(SKIPPY_SITES, "https://www.netflix.com/title/1"),
+    ).toEqual(
+      SKIPPY_SITES.map((site) => ({
+        id: `skippy:${site.host}:root`,
+        visible: site.host === "netflix.com",
+      })),
+    );
+  });
+
+  it("hides every site branch for unsupported URLs", () => {
+    expect(
+      buildSkippySiteVisibilityUpdates(SKIPPY_SITES, "https://example.com/").every(
+        (update) => update.visible === false,
+      ),
+    ).toBe(true);
   });
 });
 

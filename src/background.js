@@ -46,6 +46,25 @@ function updateMenuItem(payload) {
 }
 
 /**
+ * Show only the supported site branch matching the tab where Chrome opened the menu.
+ * @param {{pageUrl?: string}} info Menu metadata supplied by Chrome.
+ * @returns {void} Updates site branch visibility in place.
+ */
+function handleContextMenuShown(info) {
+  const updates = SkippyMenu.buildSkippySiteVisibilityUpdates(
+    SkippyStorage.SKIPPY_SITES,
+    info?.pageUrl,
+  );
+  for (const update of updates) {
+    chrome.contextMenus.update(update.id, { visible: update.visible }, () => {
+      const err = chrome.runtime.lastError;
+      if (err)
+        console.warn("[Skippy] failed to update visible context menu item", update.id, err.message);
+    });
+  }
+}
+
+/**
  * Create one context-menu item, falling back to an in-place update when creation fails.
  *
  * `chrome.contextMenus.create` does **not** throw on failure — it reports errors
@@ -209,6 +228,8 @@ chrome.contextMenus.onClicked.addListener((info) => {
     console.warn("[Skippy] context menu click failed", info?.menuItemId, err),
   );
 });
+
+chrome.contextMenus.onShown.addListener(handleContextMenuShown);
 
 // First build on load — Chrome may wake the SW without firing onInstalled / onStartup
 // (e.g. event dispatch from a tab). Build now so the menu is always available.

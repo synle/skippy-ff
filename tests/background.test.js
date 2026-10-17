@@ -20,6 +20,7 @@ function createBackgroundChromeMock(opts = {}) {
     /** @type {Function[]} */ installed: [],
     /** @type {Function[]} */ startup: [],
     /** @type {Function[]} */ menuClicked: [],
+    /** @type {Function[]} */ shown: [],
   };
 
   const removeAll = vi.fn((cb) => cb && cb());
@@ -60,6 +61,7 @@ function createBackgroundChromeMock(opts = {}) {
       create,
       update,
       onClicked: { addListener: vi.fn((cb) => listeners.menuClicked.push(cb)) },
+      onShown: { addListener: vi.fn((cb) => listeners.shown.push(cb)) },
     },
   };
 
@@ -130,6 +132,39 @@ describe("background context-menu rebuild", () => {
       "skippy:root",
       ...globalThis.SkippyStorage.SKIPPY_SITES.map((site) => `skippy:${site.host}:root`),
     ]);
+  });
+
+  it("shows only the current site's branch when Chrome opens the toolbar menu", async () => {
+    const mock = createBackgroundChromeMock();
+    await loadBackground(mock.chrome);
+    await vi.waitFor(() => expect(mock.removeAll).toHaveBeenCalledTimes(1));
+    mock.update.mockClear();
+
+    for (const cb of mock.listeners.shown) cb({ pageUrl: "https://www.netflix.com/browse" });
+
+    expect(mock.update).toHaveBeenCalledWith(
+      "skippy:netflix.com:root",
+      { visible: true },
+      expect.any(Function),
+    );
+    expect(mock.update.mock.calls.filter(([, props]) => props.visible).map(([id]) => id)).toEqual([
+      "skippy:netflix.com:root",
+    ]);
+    expect(mock.update.mock.calls.filter(([, props]) => !props.visible)).toHaveLength(
+      globalThis.SkippyStorage.SKIPPY_SITES.length - 1,
+    );
+  });
+
+  it("hides all site branches when the page URL is unavailable", async () => {
+    const mock = createBackgroundChromeMock();
+    await loadBackground(mock.chrome);
+    await vi.waitFor(() => expect(mock.removeAll).toHaveBeenCalledTimes(1));
+    mock.update.mockClear();
+
+    for (const cb of mock.listeners.shown) cb({});
+
+    expect(mock.update).toHaveBeenCalledTimes(globalThis.SkippyStorage.SKIPPY_SITES.length);
+    expect(mock.update.mock.calls.every(([, props]) => props.visible === false)).toBe(true);
   });
 
   it("reports a create failure surfaced through runtime.lastError", async () => {
