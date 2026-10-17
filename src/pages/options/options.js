@@ -228,6 +228,26 @@ async function init() {
     });
   }
 
+  const searchContainer = document.getElementById("search-providers");
+  if (searchContainer) {
+    for (const provider of SkippyStorage.SKIPPY_SEARCH_PROVIDERS) {
+      const label = document.createElement("label");
+      label.className = "toggle";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = settings.searchProviders[provider.id] === true;
+      input.addEventListener("change", async () => {
+        const current = await SkippyStorage.getSkippySettings();
+        await SkippyStorage.saveSkippySettings({
+          searchProviders: { ...current.searchProviders, [provider.id]: input.checked },
+        });
+        showStatus("Saved");
+      });
+      label.append(input, document.createTextNode(provider.label));
+      searchContainer.appendChild(label);
+    }
+  }
+
   // Render per-site cards from the centralized SKIPPY_SITES list (shared with the
   // background service worker so the context menu and the options page can't drift).
   const container = /** @type {HTMLElement | null} */ (document.getElementById("site-cards"));

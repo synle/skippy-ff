@@ -33,6 +33,39 @@ function matchesChromeUrlPattern(pageUrl, pattern) {
 }
 
 /**
+ * Extract a likely title from context-menu click metadata.
+ * @param {{selectionText?: string, pageUrl?: string}} info Chrome click metadata.
+ * @returns {string} Trimmed selected text or the final URL path segment, or empty string.
+ */
+function extractTitleSearchQuery(info) {
+  const selection = typeof info?.selectionText === "string" ? info.selectionText.trim() : "";
+  if (selection) return selection;
+  if (typeof info?.pageUrl !== "string") return "";
+  try {
+    const path = new URL(info.pageUrl).pathname.split("/").filter(Boolean).pop();
+    return path ? decodeURIComponent(path).replace(/[-_]+/g, " ").trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Build a title search URL for an external catalog.
+ * @param {"imdb"|"rottentomatoes"} service Search provider.
+ * @param {string} query Movie or show title.
+ * @returns {string} Encoded provider search URL, or empty string for an empty query.
+ */
+function buildTitleSearchUrl(service, query) {
+  const encoded = typeof query === "string" ? query.trim() : "";
+  if (!encoded) return "";
+  const value = encodeURIComponent(encoded);
+  const provider = globalThis.SkippyStorage?.SKIPPY_SEARCH_PROVIDERS?.find(
+    (item) => item.id === service,
+  );
+  return provider?.urlTemplate.replace("<query>", value) || "";
+}
+
+/**
  * Build visibility updates for site branches when Chrome renders the toolbar menu.
  * Chrome applies `documentUrlPatterns` to right-click menus, but not consistently to
  * extension action menus, so branch visibility must be refreshed on every menu show.
@@ -42,7 +75,7 @@ function matchesChromeUrlPattern(pageUrl, pattern) {
  */
 function buildSkippySiteVisibilityUpdates(sites, pageUrl) {
   return sites.map((site) => ({
-    id: `SKIPPYMENUIDPREFIX{site.host}:root`,
+    id: `${SKIPPY_MENU_ID_PREFIX}${site.host}:root`,
     visible: site.urlPatterns.some((pattern) => matchesChromeUrlPattern(pageUrl, pattern)),
   }));
 }
@@ -52,14 +85,25 @@ function buildSkippySiteVisibilityUpdates(sites, pageUrl) {
  * @param {ReadonlyArray<string>} urlPatterns URL patterns where Skippy is supported.
  * @returns {Array<object>} Settings menu payloads.
  */
-function buildSkippyRootMenuItems(urlPatterns) {
+function buildSkippyRootMenuItems(urlPatterns, settings) {
+  const providers = globalThis.SkippyStorage?.SKIPPY_SEARCH_PROVIDERS || [];
+  const parentId = `${SKIPPY_MENU_ID_PREFIX}search`;
   return [
     {
-      id: `${SKIPPY_MENU_ID_PREFIX}settings`,
-      title: "Skippy Options",
+      id: parentId,
+      title: "Search Movie Information",
       contexts: ["all"],
       documentUrlPatterns: [...urlPatterns],
     },
+    ...providers
+      .filter((provider) => settings?.searchProviders?.[provider.id] === true)
+      .map((provider) => ({
+        id: `parentId:{provider.id}`,
+        parentId,
+        title: provider.label,
+        contexts: ["all"],
+        documentUrlPatterns: [...urlPatterns],
+      })),
   ];
 }
 
@@ -176,37 +220,31 @@ function buildSkippyContextMenuItems(settings, site) {
  * Pure function — handles ids built by `buildSkippyContextMenuItems`. Returns `null` for
  * unknown ids (parent rows, third-party menus) so the background worker can fall through.
  * @param {string} menuItemId Item id from `OnClickData.menuItemId`.
- * @returns {{host: string, action: "enable"|"follow"|"flag"|"options", flag?: "skipIntro"|"skipRecap"|"skipCredits"|"nextEpisode"} | null}
+ * @returns {{host: string, action: "enable"|"follow"|"flag"|"search", flag?: "skipIntro"|"skipRecap"|"skipCredits"|"nextEpisode", service?: "imdb"|"rottentomatoes"|"google"} | null}
  */
 function parseSkippyMenuItemId(menuItemId) {
   if (typeof menuItemId !== "string" || !menuItemId.startsWith(SKIPPY_MENU_ID_PREFIX)) return null;
-  if (menuItemId === `${SKIPPY_MENU_ID_PREFIX}settings`) {
-    return { host: "settings", action: "options" };
-  }
+  const host = "search";
   const parts = menuItemId.split(":");
   // Expected forms:
-  //   skippy:<host>:enable
-  //   skippy:<host>:follow
-  //   skippy:<host>:flag:<flagKey>
-  //   skippy:<host>:options
+  //   skippy:search:<provider>
   // (root + separators are not clickable; they never reach this handler.)
   if (parts.length < 3) return null;
-  const host = parts[1];
-  const action = parts[2];
-  if (action === "enable" || action === "follow" || action === "options") {
-    return { host, action };
-  }
-  if (action === "flag" && parts.length === 4) {
-    const flag = /** @type {"skipIntro"|"skipRecap"|"skipCredits"|"nextEpisode"} */ (parts[3]);
-    return { host, action: "flag", flag };
+  if (parts[1] !== "search") return null;
+  const service = parts[2];
+  if (service === "imdb" || service === "rottentomatoes" || service === "google") {
+    return { host, action: "search", service };
   }
   return null;
 }
+
 
 globalThis.SkippyMenu = {
   buildSkippySiteVisibilityUpdates,
   buildSkippyRootMenuItems,
   buildSkippyContextMenuItems,
+  extractTitleSearchQuery,
+  buildTitleSearchUrl,
   parseSkippyMenuItemId,
   SKIPPY_MENU_ID_PREFIX,
   SKIPPY_MENU_FLAG_LABELS,

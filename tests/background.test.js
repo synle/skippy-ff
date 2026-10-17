@@ -56,6 +56,7 @@ function createBackgroundChromeMock(opts = {}) {
       onInstalled: { addListener: vi.fn((cb) => listeners.installed.push(cb)) },
       onStartup: { addListener: vi.fn((cb) => listeners.startup.push(cb)) },
     },
+    tabs: { create: vi.fn() },
     contextMenus: {
       removeAll,
       create,
@@ -143,15 +144,21 @@ describe("background context-menu rebuild", () => {
       cb({ pageUrl: "https://www.netflix.com/browse", contexts: ["action"] });
 
     expect(mock.update).toHaveBeenCalledWith(
-      "skippy:netflix.com:root",
+      "SKIPPYMENUIDPREFIXnetflix.com:root",
       { visible: true },
       expect.any(Function),
     );
     expect(mock.update.mock.calls.filter(([, props]) => props.visible).map(([id]) => id)).toEqual([
-      "skippy:netflix.com:root",
+      "SKIPPYMENUIDPREFIXnetflix.com:root",
+      "skippy:search",
     ]);
     expect(mock.update.mock.calls.filter(([, props]) => !props.visible)).toHaveLength(
       globalThis.SkippyStorage.SKIPPY_SITES.length,
+    );
+    expect(mock.update).toHaveBeenCalledWith(
+      "skippy:search",
+      { visible: true },
+      expect.any(Function),
     );
   });
 
@@ -165,7 +172,7 @@ describe("background context-menu rebuild", () => {
       cb({ pageUrl: "https://www.netflix.com/browse", contexts: ["page"] });
 
     expect(mock.update).toHaveBeenCalledWith(
-      "skippy:settings",
+      "skippy:search",
       { visible: true },
       expect.any(Function),
     );
@@ -179,7 +186,7 @@ describe("background context-menu rebuild", () => {
 
     for (const cb of mock.listeners.shown) cb({ contexts: ["action"] });
 
-    expect(mock.update).toHaveBeenCalledTimes(globalThis.SkippyStorage.SKIPPY_SITES.length + 1);
+    expect(mock.update).toHaveBeenCalledTimes(globalThis.SkippyStorage.SKIPPY_SITES.length + 2);
     expect(mock.update.mock.calls.every(([, props]) => props.visible === false)).toBe(true);
   });
 
@@ -294,6 +301,12 @@ describe("background context-menu click routing", () => {
     await vi.waitFor(() => expect(mock.set).toHaveBeenCalled());
   }
 
+  /** Dispatch a title-search click without waiting for a storage write. */
+  async function clickSearch(menuItemId, info) {
+    for (const cb of mock.listeners.menuClicked) cb({ menuItemId, ...info });
+    await Promise.resolve();
+  }
+
   it("persists an enable toggle for the clicked site only", async () => {
     await click("skippy:netflix.com:enable", false);
     const saved = mock.set.mock.calls.at(-1)[0].skippySettings;
@@ -317,15 +330,17 @@ describe("background context-menu click routing", () => {
     });
   });
 
-  it("opens the options page without touching storage", async () => {
-    for (const cb of mock.listeners.menuClicked) cb({ menuItemId: "skippy:settings" });
-    expect(mock.chrome.runtime.openOptionsPage).toHaveBeenCalled();
-    expect(mock.set).not.toHaveBeenCalled();
+  it("opens an encoded Google search from the title-search submenu", async () => {
+    await clickSearch("skippy:search:google", {
+      pageUrl: "https://www.netflix.com/title/the-bear",
+    });
+    expect(mock.chrome.tabs.create).toHaveBeenCalledWith({
+      url: "https://www.google.com/search?q=the%20bear",
+    });
   });
 
   it("ignores menu ids from other extensions", async () => {
     for (const cb of mock.listeners.menuClicked) cb({ menuItemId: "someoneelse:thing" });
     expect(mock.set).not.toHaveBeenCalled();
-    expect(mock.chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
   });
 });

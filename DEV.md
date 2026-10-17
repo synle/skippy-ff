@@ -62,16 +62,16 @@ After: `npm run validate`, reload the extension in Chrome, and test on the live 
 
 ## Right-click context menu
 
-A background service worker (`src/background.js`) registers top-level **Skippy `<Site>` Settings** branches plus **Skippy Options** on supported streaming pages. Site controls are nested below the matching site settings entry. Items are generated per-site from `SKIPPY_SITES` and reflect the live `getEffectiveSiteSettings` resolution:
+A background service worker (`src/background.js`) registers top-level **Skippy `<Site>` Settings** branches plus **Search Movie Information** on supported streaming pages. Site controls are nested below the matching site settings entry. Items are generated per-site from `SKIPPY_SITES` and reflect the live `getEffectiveSiteSettings` resolution:
 
 - **Enable on `<Site>`** — toggles `enabledSites[host]`.
 - **Follow master settings** — inverse of `siteOverrides[host].useOverride`.
 - **Skip Intro / Skip Recap / Skip Credits / Auto start next episode** — toggling any flag flips `useOverride` true on the site (same behavior as the options page card).
-- **Skippy Options** — calls `chrome.runtime.openOptionsPage()`.
+- **Search Movie Information** — opens enabled Rotten Tomatoes, IMDb, or Google searches for the current title.
 
 When the site is disabled, the four flag rows and "Follow master settings" are hidden; only Enable remains in that site's branch.
 
-The menu is rebuilt from scratch on `onInstalled`, `onStartup`, and every `chrome.storage.onChanged.sync` event — `chrome.contextMenus` is append-only, so `removeAll` + recreate is the simplest way to keep checkboxes in sync after a settings save from any surface (popup, options page, another tab's menu). On `contextMenus.onShown`, site visibility is updated from the current tab URL, while **Skippy Options** stays in the right-click page menu and is hidden from the toolbar menu because the browser provides **Extension Options** there.
+The menu is rebuilt from scratch on `onInstalled`, `onStartup`, and every `chrome.storage.onChanged.sync` event — `chrome.contextMenus` is append-only, so `removeAll` + recreate is the simplest way to keep checkboxes in sync after a settings save from any surface (popup, options page, another tab's menu). On `contextMenus.onShown`, site visibility is updated from the current tab URL, while **Search Movie Information** stays in both the right-click page menu and the toolbar menu.
 
 To debug context-menu issues, inspect the service worker: `chrome://extensions/` → Skippy → **Inspect views: service worker**. `[Skippy] context menu …` warnings land in that console.
 

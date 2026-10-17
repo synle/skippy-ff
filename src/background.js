@@ -63,6 +63,14 @@ function handleContextMenuShown(info) {
     });
   }
   chrome.contextMenus.update(
+    "skippy:search",
+    { visible: updates.some((update) => update.visible) },
+    () => {
+      const err = chrome.runtime.lastError;
+      if (err) console.warn("[Skippy] failed to update title search menu item", err.message);
+    },
+  );
+  chrome.contextMenus.update(
     "skippy:settings",
     { visible: info?.contexts?.includes("page") ?? false },
     () => {
@@ -135,7 +143,7 @@ function rebuildContextMenus() {
     const settings = await SkippyStorage.getSkippySettings();
     const pending = [];
     const urlPatterns = SkippyStorage.SKIPPY_SITES.flatMap((site) => site.urlPatterns);
-    for (const payload of SkippyMenu.buildSkippyRootMenuItems(urlPatterns)) {
+    for (const payload of SkippyMenu.buildSkippyRootMenuItems(urlPatterns, settings)) {
       pending.push(createMenuItem(payload));
     }
     for (const site of SkippyStorage.SKIPPY_SITES) {
@@ -154,54 +162,65 @@ function rebuildContextMenus() {
 }
 
 /**
- * Handle a click on any Skippy context-menu item. Resolves the click to a action via
- * `SkippyMenu.parseSkippyMenuItemId`, then mutates settings accordingly. Toggling any flag
- * row implicitly flips `useOverride` true so the click has an observable effect (mirroring
- * the options-page card behavior).
+ * Handle a click on any Skippy context-menu item. Mutates settings accordingly. Toggling any flag
+ * row implicitly flips `useOverride` true so the click has an observable effect (mirroring the
+ * options-page card behavior).
  * @param {chrome.contextMenus.OnClickData} info Click metadata supplied by Chrome.
  * @returns {Promise<void>}
  */
 async function handleContextMenuClick(info) {
-  const parsed = SkippyMenu.parseSkippyMenuItemId(String(info.menuItemId));
-  if (!parsed) return;
+  const menuItemId = String(info.menuItemId);
+  const parsed = SkippyMenu.parseSkippyMenuItemId(menuItemId);
 
-  if (parsed.action === "options") {
-    chrome.runtime.openOptionsPage();
+  // Handle search actions (only type parseSkippyMenuItemId returns for).
+  if (parsed?.action === "search" && parsed?.service) {
+    const query = SkippyMenu.extractTitleSearchQuery(info);
+    const url = SkippyMenu.buildTitleSearchUrl(parsed.service, query);
+    if (url) chrome.tabs.create({ url });
     return;
   }
 
-  const current = await SkippyStorage.getSkippySettings();
-  const existingOverride =
-    current.siteOverrides[parsed.host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
+  // Handle site-specific actions: enable, follow, flag. IDs are in the format
+  // skippy:<host>:enable / skippy:<host>:follow / skippy:<host>:flag:<flagKey>.
+  const parts = menuItemId.split(":");
+  if (parts.length < 3) return;
+  const host = parts[1];
+  const action = parts[2];
 
-  if (parsed.action === "enable") {
+  const current = await SkippyStorage.getSkippySettings();
+
+  // Enable action: skippy:<host>:enable
+  if (action === "enable") {
     await SkippyStorage.saveSkippySettings({
-      enabledSites: { ...current.enabledSites, [parsed.host]: Boolean(info.checked) },
+      enabledSites: { ...current.enabledSites, [host]: Boolean(info.checked) },
     });
     return;
   }
 
-  if (parsed.action === "follow") {
+  // Follow master action: skippy:<host>:follow
+  if (action === "follow") {
     // "Follow master" checked → useOverride false. Inverse phrasing for the UI; flip here.
+    const existingOverride = current.siteOverrides[host] || SkippyStorage.SKIPPY_SITE_OVERRIDE_DEFAULTS;
     await SkippyStorage.saveSkippySettings({
       siteOverrides: {
         ...current.siteOverrides,
-        [parsed.host]: { ...existingOverride, useOverride: !info.checked },
+        [host]: { ...existingOverride, useOverride: !info.checked },
       },
     });
     return;
   }
 
-  if (parsed.action === "flag" && parsed.flag) {
+  // Flag action: skippy:<host>:flag:<flagKey>
+  if (action === "flag" && parts.length === 4) {
     await SkippyStorage.saveSkippySettings({
       siteOverrides: {
         ...current.siteOverrides,
         // Touching any individual override flag implies the user wants override on —
         // otherwise the toggle would silently no-op (master would keep winning). Flip
         // useOverride true on first nudge, same as the options-page card.
-        [parsed.host]: {
+        [host]: {
           ...existingOverride,
-          [parsed.flag]: Boolean(info.checked),
+          [parts[3]]: Boolean(info.checked),
           useOverride: true,
         },
       },

@@ -12,6 +12,7 @@ export function createChromeMock() {
   let changeListeners = [];
 
   const chrome = {
+    tabs: { create: vi.fn() },
     storage: {
       sync: {
         get: vi.fn(async (keys) => {

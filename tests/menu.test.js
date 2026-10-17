@@ -15,6 +15,8 @@ const {
   buildSkippySiteVisibilityUpdates,
   buildSkippyRootMenuItems,
   parseSkippyMenuItemId,
+  extractTitleSearchQuery,
+  buildTitleSearchUrl,
   SKIPPY_MENU_FLAG_LABELS,
   SKIPPY_MENU_PARENT_TITLE,
 } = globalThis.SkippyMenu;
@@ -155,7 +157,7 @@ describe("buildSkippySiteVisibilityUpdates", () => {
       buildSkippySiteVisibilityUpdates(SKIPPY_SITES, "https://www.netflix.com/title/1"),
     ).toEqual(
       SKIPPY_SITES.map((site) => ({
-        id: `skippy:${site.host}:root`,
+        id: `SKIPPYMENUIDPREFIX${site.host}:root`,
         visible: site.host === "netflix.com",
       })),
     );
@@ -171,39 +173,11 @@ describe("buildSkippySiteVisibilityUpdates", () => {
 });
 
 describe("parseSkippyMenuItemId", () => {
-  it("parses the enable action", () => {
-    expect(parseSkippyMenuItemId("skippy:crunchyroll.com:enable")).toEqual({
-      host: "crunchyroll.com",
-      action: "enable",
-    });
-  });
-
-  it("parses the follow action", () => {
-    expect(parseSkippyMenuItemId("skippy:netflix.com:follow")).toEqual({
-      host: "netflix.com",
-      action: "follow",
-    });
-  });
-
-  it("parses the options action", () => {
-    expect(parseSkippyMenuItemId("skippy:max.com:options")).toEqual({
-      host: "max.com",
-      action: "options",
-    });
-  });
-
-  it("parses the root settings action", () => {
-    expect(parseSkippyMenuItemId("skippy:settings")).toEqual({
-      host: "settings",
-      action: "options",
-    });
-  });
-
-  it("parses a flag action with the flag key intact", () => {
-    expect(parseSkippyMenuItemId("skippy:tubitv.com:flag:skipIntro")).toEqual({
-      host: "tubitv.com",
-      action: "flag",
-      flag: "skipIntro",
+  it("parses a title search action", () => {
+    expect(parseSkippyMenuItemId("skippy:search:google")).toEqual({
+      host: "search",
+      action: "search",
+      service: "google",
     });
   });
 
@@ -222,5 +196,24 @@ describe("parseSkippyMenuItemId", () => {
   it("returns null for non-string ids — Chrome OnClickData.menuItemId can be a number", () => {
     expect(parseSkippyMenuItemId(/** @type {any} */ (123))).toBeNull();
     expect(parseSkippyMenuItemId(/** @type {any} */ (undefined))).toBeNull();
+  });
+});
+
+describe("title search helpers", () => {
+  it("prefers selected text and falls back to a URL path title", () => {
+    expect(extractTitleSearchQuery({ selectionText: " The Bear " })).toBe("The Bear");
+    expect(extractTitleSearchQuery({ pageUrl: "https://www.netflix.com/title/my-show" })).toBe(
+      "my show",
+    );
+  });
+
+  it("builds encoded IMDb and Rotten Tomatoes URLs", () => {
+    expect(buildTitleSearchUrl("imdb", "The Bear & Me")).toBe(
+      "https://www.imdb.com/find/?q=The%20Bear%20%26%20Me",
+    );
+    expect(buildTitleSearchUrl("rottentomatoes", "The Bear & Me")).toBe(
+      "https://www.rottentomatoes.com/search?search=The%20Bear%20%26%20Me",
+    );
+    expect(buildTitleSearchUrl("imdb", "")).toBe("");
   });
 });

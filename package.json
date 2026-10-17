@@ -1,7 +1,7 @@
 {
   "name": "skippy",
-  "version": "0.39.0",
-  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+, and Apple TV.",
+  "version": "0.40.0",
+  "description": "Auto-skip intros, recaps, and credits on Crunchyroll, Disney+ (also Hulu content), Apple TV, Netflix, Prime Video, Max, Paramount+, Peacock, Tubi, AMC+, and Shudder. Created by Sy Le.",
   "homepage": "https://github.com/synle/skippy-ff",
   "bugs": {
     "url": "https://github.com/synle/skippy-ff/issues"

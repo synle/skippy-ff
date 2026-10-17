@@ -15,6 +15,17 @@ const SKIPPY_POLL_MAX_MS = 5000;
  */
 const SKIPPY_FLAG_KEYS = ["skipIntro", "skipRecap", "skipCredits", "nextEpisode"];
 
+/** Search providers shown in the title-search menu, kept in display order. */
+const SKIPPY_SEARCH_PROVIDERS = [
+  {
+    id: "rottentomatoes",
+    label: "Rotten Tomatoes",
+    urlTemplate: "https://www.rottentomatoes.com/search?search=<query>",
+  },
+  { id: "imdb", label: "IMDb", urlTemplate: "https://www.imdb.com/find/?q=<query>" },
+  { id: "google", label: "Google", urlTemplate: "https://www.google.com/search?q=<query>" },
+];
+
 /** Default skip flags. All on by default; verbose logging off by default (opt-in for testing). */
 const SKIPPY_DEFAULTS = {
   skipIntro: true,
@@ -39,6 +50,7 @@ const SKIPPY_DEFAULTS = {
     "amcplus.com": true,
     "shudder.com": true,
   },
+  searchProviders: { rottentomatoes: true, imdb: false, google: true },
   /**
    * Per-site overrides for the four skip flags. Empty by default — every site follows the
    * master settings. A user opts a site into independent control by setting
@@ -178,6 +190,10 @@ async function getSkippySettings() {
       ...(userSettings.enabledSites || {}),
     },
     siteOverrides: mergedOverrides,
+    searchProviders: {
+      ...SKIPPY_DEFAULTS.searchProviders,
+      ...(userSettings.searchProviders || {}),
+    },
   };
 }
 
@@ -290,6 +306,7 @@ globalThis.SkippyStorage = {
   SKIPPY_DEFAULTS,
   SKIPPY_SITE_OVERRIDE_DEFAULTS,
   SKIPPY_FLAG_KEYS,
+  SKIPPY_SEARCH_PROVIDERS,
   SKIPPY_SITES,
   SKIPPY_POLL_MIN_MS,
   SKIPPY_POLL_MAX_MS,
