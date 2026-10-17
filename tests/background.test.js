@@ -139,7 +139,8 @@ describe("background context-menu rebuild", () => {
     await vi.waitFor(() => expect(mock.removeAll).toHaveBeenCalledTimes(1));
     mock.update.mockClear();
 
-    for (const cb of mock.listeners.shown) cb({ pageUrl: "https://www.netflix.com/browse" });
+    for (const cb of mock.listeners.shown)
+      cb({ pageUrl: "https://www.netflix.com/browse", contexts: ["action"] });
 
     expect(mock.update).toHaveBeenCalledWith(
       "skippy:netflix.com:root",
@@ -147,11 +148,26 @@ describe("background context-menu rebuild", () => {
       expect.any(Function),
     );
     expect(mock.update.mock.calls.filter(([, props]) => props.visible).map(([id]) => id)).toEqual([
-      "skippy:settings",
       "skippy:netflix.com:root",
     ]);
     expect(mock.update.mock.calls.filter(([, props]) => !props.visible)).toHaveLength(
-      globalThis.SkippyStorage.SKIPPY_SITES.length - 1,
+      globalThis.SkippyStorage.SKIPPY_SITES.length,
+    );
+  });
+
+  it("keeps the global settings item in the right-click page menu", async () => {
+    const mock = createBackgroundChromeMock();
+    await loadBackground(mock.chrome);
+    await vi.waitFor(() => expect(mock.removeAll).toHaveBeenCalledTimes(1));
+    mock.update.mockClear();
+
+    for (const cb of mock.listeners.shown)
+      cb({ pageUrl: "https://www.netflix.com/browse", contexts: ["page"] });
+
+    expect(mock.update).toHaveBeenCalledWith(
+      "skippy:settings",
+      { visible: true },
+      expect.any(Function),
     );
   });
 
@@ -161,7 +177,7 @@ describe("background context-menu rebuild", () => {
     await vi.waitFor(() => expect(mock.removeAll).toHaveBeenCalledTimes(1));
     mock.update.mockClear();
 
-    for (const cb of mock.listeners.shown) cb({});
+    for (const cb of mock.listeners.shown) cb({ contexts: ["action"] });
 
     expect(mock.update).toHaveBeenCalledTimes(globalThis.SkippyStorage.SKIPPY_SITES.length + 1);
     expect(mock.update.mock.calls.every(([, props]) => props.visible === false)).toBe(true);

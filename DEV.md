@@ -71,7 +71,7 @@ A background service worker (`src/background.js`) registers top-level **Skippy `
 
 When the site is disabled, the four flag rows and "Follow master settings" are hidden; only Enable remains in that site's branch.
 
-The menu is rebuilt from scratch on `onInstalled`, `onStartup`, and every `chrome.storage.onChanged.sync` event — `chrome.contextMenus` is append-only, so `removeAll` + recreate is the simplest way to keep checkboxes in sync after a settings save from any surface (popup, options page, another tab's menu). On `contextMenus.onShown`, site and global entry visibility is updated from the current tab URL so the extension-toolbar menu shows nothing on unsupported pages and only the matching site branch plus **Skippy Options** on supported pages; right-click menus still use `documentUrlPatterns` for browser-side filtering.
+The menu is rebuilt from scratch on `onInstalled`, `onStartup`, and every `chrome.storage.onChanged.sync` event — `chrome.contextMenus` is append-only, so `removeAll` + recreate is the simplest way to keep checkboxes in sync after a settings save from any surface (popup, options page, another tab's menu). On `contextMenus.onShown`, site visibility is updated from the current tab URL, while **Skippy Options** stays in the right-click page menu and is hidden from the toolbar menu because the browser provides **Extension Options** there.
 
 To debug context-menu issues, inspect the service worker: `chrome://extensions/` → Skippy → **Inspect views: service worker**. `[Skippy] context menu …` warnings land in that console.
 

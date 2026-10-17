@@ -153,13 +153,12 @@ describe("buildSkippySiteVisibilityUpdates", () => {
   it("matches only the site owning the current page URL", () => {
     expect(
       buildSkippySiteVisibilityUpdates(SKIPPY_SITES, "https://www.netflix.com/title/1"),
-    ).toEqual([
-      { id: "skippy:settings", visible: true },
-      ...SKIPPY_SITES.map((site) => ({
+    ).toEqual(
+      SKIPPY_SITES.map((site) => ({
         id: `skippy:${site.host}:root`,
         visible: site.host === "netflix.com",
       })),
-    ]);
+    );
   });
 
   it("hides every site branch for unsupported URLs", () => {

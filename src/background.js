@@ -47,7 +47,7 @@ function updateMenuItem(payload) {
 
 /**
  * Show only the supported site branch matching the tab where Chrome opened the menu.
- * @param {{pageUrl?: string}} info Menu metadata supplied by Chrome.
+ * @param {{pageUrl?: string, contexts?: string[]}} info Menu metadata supplied by Chrome.
  * @returns {void} Updates site branch visibility in place.
  */
 function handleContextMenuShown(info) {
@@ -62,6 +62,14 @@ function handleContextMenuShown(info) {
         console.warn("[Skippy] failed to update visible context menu item", update.id, err.message);
     });
   }
+  chrome.contextMenus.update(
+    "skippy:settings",
+    { visible: info?.contexts?.includes("page") ?? false },
+    () => {
+      const err = chrome.runtime.lastError;
+      if (err) console.warn("[Skippy] failed to update global context menu item", err.message);
+    },
+  );
 }
 
 /**
