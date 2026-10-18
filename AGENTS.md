@@ -23,7 +23,7 @@ There is no separate Hulu adapter — Hulu's catalog now streams through Disney+
 7. **Content scripts AND the background service worker are classic scripts, not ES modules** (MV3 constraint for content scripts; we follow the same pattern in `background.js` via `importScripts` for cross-script wiring consistency). Cross-script wiring goes through `globalThis.*` (`SkippyStorage`, `SkippyCore`, `SkippyMenu`). The options page is the only ES-module surface.
 8. **All diagnostic logs go through `SkippyCore.skippyLog` / `skippyDLog`** — silent unless `settings.verboseLogging` is on. The `[Skippy] clicking …` line is the only exception (always on, so users can confirm a skip fired).
 9. **Settings defaults are additive**, never breaking. New flag → add to `SKIPPY_DEFAULTS`, hydrate in `options.js`, render a row in `options.html`, default to a value that preserves existing behavior.
-10. **Release dispatch never auto-pins to HEAD.** `release-official` is `workflow_dispatch` only; tag is derived via `synle/workflows/.../resolve-tag` (no `github.ref_name` fallback). See `ARCHITECTURE.md` § CI/CD.
+10. **Use one release skill.** `/skill:release` defaults every unspecified request to official; beta requires explicit beta/prerelease/test wording. It asks no confirmation questions, summarizes commits since the last official release, and leaves custom notes/changesets unset. `release-official` is `workflow_dispatch` only; tag is derived via `synle/workflows/.../resolve-tag` (no `github.ref_name` fallback). See `ARCHITECTURE.md` § CI/CD.
 
 ## Crash prevention
 

@@ -135,13 +135,9 @@ Adapter logic (DOM selectors, visibility) is tested manually in the browser. Pin
 
 ## Release
 
-Release is dispatched manually after a merge to `main`:
+Release is dispatched through `/skill:release` after a merge to `main`. Every unspecified request is official; beta requires explicit beta/prerelease/test wording. The skill summarizes commits since the last official release and leaves custom notes/changesets unset so the workflow generates them.
 
-```bash
-gh workflow run release-official --repo synle/skippy-ff --ref main
-```
-
-The workflow bumps `npm version minor`, drafts a release, runs `npm run package`, commits the bump back to main, and publishes the release with `skippy-ff.zip` attached. Beta uses `release-beta.yml`. See `ARCHITECTURE.md` § CI/CD.
+The official workflow bumps `npm version minor`, drafts a release, runs `npm run package`, commits the bump back to main, and publishes the release with `skippy-ff.zip` attached. Beta uses `release-beta.yml`. See `ARCHITECTURE.md` § CI/CD.
 
 For local one-off bundling without dispatching a release:
 
