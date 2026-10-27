@@ -1,5 +1,7 @@
 /** Skippy core. Site-agnostic helpers for detecting and clicking skip buttons. */
 
+globalThis.SkippyDiagnostics?.init("content");
+
 /** Verbose-logging flag. Mirrored from `settings.verboseLogging` by `skippyStart`. */
 let _verbose = false;
 
@@ -266,7 +268,7 @@ function skippyClick(el) {
  * @param {object} [options] Options.
  * @param {number} [options.intervalMs] Fallback polling interval in ms when settings haven't loaded yet.
  * @param {number} [options.cooldownMs] Per-element cooldown in ms after a click.
- * @returns {void}
+ * @returns {void} Owns one visibility-gated timeout; records bounded local failure evidence.
  */
 function skippyStart(findSkipButton, options = {}) {
   const fallbackIntervalMs =
@@ -290,6 +292,7 @@ function skippyStart(findSkipButton, options = {}) {
       // Unblock the buffered startup logs even though verbose state is unknowable, so the
       // adapter-load banner isn't stranded in `_pendingLogs` forever.
       skippySetVerbose(false);
+      globalThis.SkippyDiagnostics?.record("settings_error", err);
       console.warn("[Skippy] could not read settings — skipping is disabled on this page", err);
     },
   );
@@ -336,6 +339,10 @@ function skippyStart(findSkipButton, options = {}) {
         }
       }
     } catch (err) {
+      globalThis.SkippyDiagnostics?.record("adapter_error", err, {
+        pollIntervalMs: intervalMs,
+        pendingTimers: 0,
+      });
       // Not verbose-gated: an adapter that throws is broken, and the user needs to see it
       // to file a useful bug report. Deduped so it can't flood the console.
       const message = String((err && /** @type {Error} */ (err).message) || err);
@@ -348,7 +355,10 @@ function skippyStart(findSkipButton, options = {}) {
     }
   }
 
-  /** Pause DOM polling while the streaming tab is hidden and resume on tab visibility. */
+  /**
+   * Pause or resume the owned poll timer and record bounded lifecycle evidence.
+   * @returns {void} Updates the timeout; no DOM scans or raised errors.
+   */
   function handleVisibilityChange() {
     isPolling = document.visibilityState === "visible";
     if (!isPolling) {
@@ -356,9 +366,11 @@ function skippyStart(findSkipButton, options = {}) {
         clearTimeout(pollTimer);
         pollTimer = null;
       }
+      globalThis.SkippyDiagnostics?.record("poll_paused", null, { pendingTimers: 0 });
       return;
     }
     if (pollTimer === null) pollTimer = setTimeout(tick, 0);
+    globalThis.SkippyDiagnostics?.record("poll_resumed", null, { pendingTimers: 1 });
   }
 
   document.addEventListener("visibilitychange", handleVisibilityChange);

@@ -1,8 +1,9 @@
 /** Skippy background service worker. Builds + maintains the right-click context menu and routes clicks back into storage. */
 
-// Classic MV3 service worker — pull in the two globals it needs. Order matters: menu.js
-// reads `globalThis.SkippyStorage` at call time, but the reference itself is captured at
-// load time, so storage.js must come first.
+// Register diagnostic hooks before loading the remaining classic-script helpers.
+// Storage must precede menu.js; diagnostics persistence runs asynchronously after imports.
+importScripts("helpers/diagnostics.js");
+globalThis.SkippyDiagnostics.init("background");
 importScripts("helpers/storage.js", "helpers/menu.js");
 
 /**
@@ -27,7 +28,7 @@ let pendingRebuild = Promise.resolve();
  * worker instance rebuilt concurrently). `update` cannot change `id` or `type`, so both are
  * stripped from the properties passed to it.
  * @param {object} payload Create-properties object; `id` names the item to update.
- * @returns {Promise<void>} Always fulfilled; failures are logged, never thrown.
+ * @returns {Promise<void>} Always fulfilled; records local failure evidence and logs failures without throwing.
  */
 function updateMenuItem(payload) {
   const { id, type, ...props } = payload;
@@ -35,10 +36,14 @@ function updateMenuItem(payload) {
     try {
       chrome.contextMenus.update(id, props, () => {
         const err = chrome.runtime.lastError;
-        if (err) console.warn("[Skippy] failed to update context menu item", id, err.message);
+        if (err) {
+          globalThis.SkippyDiagnostics.record("menu_error", err);
+          console.warn("[Skippy] failed to update context menu item", id, err.message);
+        }
         resolve();
       });
     } catch (err) {
+      globalThis.SkippyDiagnostics.record("menu_error", err);
       console.warn("[Skippy] context menu update threw", id, err);
       resolve();
     }
@@ -48,7 +53,7 @@ function updateMenuItem(payload) {
 /**
  * Show only the supported site branch matching the tab where Chrome opened the menu.
  * @param {{pageUrl?: string, contexts?: string[]}} info Menu metadata supplied by Chrome.
- * @returns {void} Updates site branch visibility in place.
+ * @returns {void} Updates visibility in place and records local API failure evidence.
  */
 function handleContextMenuShown(info) {
   const updates = SkippyMenu.buildSkippySiteVisibilityUpdates(
@@ -58,8 +63,10 @@ function handleContextMenuShown(info) {
   for (const update of updates) {
     chrome.contextMenus.update(update.id, { visible: update.visible }, () => {
       const err = chrome.runtime.lastError;
-      if (err)
+      if (err) {
+        globalThis.SkippyDiagnostics.record("menu_error", err);
         console.warn("[Skippy] failed to update visible context menu item", update.id, err.message);
+      }
     });
   }
   chrome.contextMenus.update(
@@ -67,7 +74,10 @@ function handleContextMenuShown(info) {
     { visible: updates.some((update) => update.visible) },
     () => {
       const err = chrome.runtime.lastError;
-      if (err) console.warn("[Skippy] failed to update title search menu item", err.message);
+      if (err) {
+        globalThis.SkippyDiagnostics.record("menu_error", err);
+        console.warn("[Skippy] failed to update title search menu item", err.message);
+      }
     },
   );
   chrome.contextMenus.update(
@@ -75,7 +85,10 @@ function handleContextMenuShown(info) {
     { visible: info?.contexts?.includes("page") ?? false },
     () => {
       const err = chrome.runtime.lastError;
-      if (err) console.warn("[Skippy] failed to update global context menu item", err.message);
+      if (err) {
+        globalThis.SkippyDiagnostics.record("menu_error", err);
+        console.warn("[Skippy] failed to update global context menu item", err.message);
+      }
     },
   );
 }
@@ -90,7 +103,7 @@ function handleContextMenuShown(info) {
  * `update` attempt — for the common "duplicate id" case this converges the item to the
  * desired state; for anything else `update` fails too and is logged.
  * @param {object} payload A create-properties object from `SkippyMenu.buildSkippyContextMenuItems`.
- * @returns {Promise<void>} Resolves once Chrome has acknowledged the item. Never rejects.
+ * @returns {Promise<void>} Resolves after acknowledgement; records local failures without rejecting.
  */
 function createMenuItem(payload) {
   return new Promise((resolve) => {
@@ -98,12 +111,14 @@ function createMenuItem(payload) {
       chrome.contextMenus.create(payload, () => {
         const err = chrome.runtime.lastError;
         if (!err) return resolve();
+        globalThis.SkippyDiagnostics.record("menu_error", err);
         console.warn("[Skippy] failed to create context menu item", payload.id, err.message);
         updateMenuItem(payload).then(resolve);
       });
     } catch (err) {
       // Synchronous throws are only possible for a malformed payload (bad `contexts` value,
       // unknown `parentId`). Log and keep going so one bad item can't abort the rebuild.
+      globalThis.SkippyDiagnostics.record("menu_error", err);
       console.warn("[Skippy] context menu create threw", payload.id, err);
       resolve();
     }
@@ -127,7 +142,7 @@ function createMenuItem(payload) {
  * queue rather than racing. The queue is deliberately kept in a fulfilled state: the
  * returned promise carries the rejection to the caller, while `pendingRebuild` swallows it
  * so the next rebuild still runs.
- * @returns {Promise<void>}
+ * @returns {Promise<void>} Rebuilds menus and records attempted item count; rejects on storage/API failure.
  */
 function rebuildContextMenus() {
   const run = async () => {
@@ -136,7 +151,10 @@ function rebuildContextMenus() {
         // Consume lastError so a failed wipe doesn't surface as "Unchecked runtime.lastError";
         // creates below fall back to `update` for any survivor.
         const err = chrome.runtime.lastError;
-        if (err) console.warn("[Skippy] failed to clear context menu", err.message);
+        if (err) {
+          globalThis.SkippyDiagnostics.record("menu_error", err);
+          console.warn("[Skippy] failed to clear context menu", err.message);
+        }
         resolve();
       }),
     );
@@ -153,11 +171,14 @@ function rebuildContextMenus() {
     // Hold the queue until Chrome acks every item, so the next rebuild's `removeAll`
     // can't interleave with this one's creates.
     await Promise.all(pending);
+    globalThis.SkippyDiagnostics.record("menu_ready", null, { menuItems: pending.length });
   };
   // `pendingRebuild.then(run, run)` — run on both settle paths so a previously failed
   // rebuild can't skip this one.
   const result = pendingRebuild.then(run, run);
-  pendingRebuild = result.catch(() => {});
+  pendingRebuild = result.catch((err) => {
+    globalThis.SkippyDiagnostics.record("menu_error", err);
+  });
   return result;
 }
 
@@ -254,9 +275,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 chrome.contextMenus.onClicked.addListener((info) => {
-  handleContextMenuClick(info).catch((err) =>
-    console.warn("[Skippy] context menu click failed", info?.menuItemId, err),
-  );
+  handleContextMenuClick(info).catch((err) => {
+    globalThis.SkippyDiagnostics.record("menu_error", err);
+    console.warn("[Skippy] context menu click failed", info?.menuItemId, err);
+  });
 });
 
 // Chromium exposes `onShown`; Edge versions without it still support the rest of the

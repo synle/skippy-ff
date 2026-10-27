@@ -69,6 +69,20 @@
         <p class="muted">
           Off by default. Enable to see scan + click diagnostics in the page's DevTools console.
         </p>
+        <p class="muted">
+          Skippy keeps up to 80 local diagnostic events: error types, Skippy file/line frames,
+          supported site keys, timestamps, and counters. No raw error messages or browsing URLs.
+          Nothing is uploaded. Export includes your browser user agent; review before sharing.
+          Native browser crashes, GPU failures, and other extensions cannot be diagnosed here.
+          Worker starts are normal, not proof of a crash.
+        </p>
+        <button type="button" id="diagnostics-export">Export diagnostics JSON</button>
+        <button type="button" id="diagnostics-clear">Clear local diagnostics</button>
+        <p id="diagnostics-status" role="status" aria-live="polite"></p>
+        <label id="diagnostics-output-label" hidden>
+          Copy this JSON for your bug report
+          <textarea id="diagnostics-output" readonly rows="12" style="width: 100%"></textarea>
+        </label>
       </section>
 
       <footer>

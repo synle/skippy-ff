@@ -25,7 +25,7 @@ function escapeMatchPatternLiteral(value) {
 function matchesChromeUrlPattern(pageUrl, pattern) {
   if (typeof pageUrl !== "string" || typeof pattern !== "string") return false;
   try {
-    const expression = `^escapeMatchPatternLiteral(pattern).replaceAll("*",".*")`;
+    const expression = `^${escapeMatchPatternLiteral(pattern).replaceAll("*", ".*")}$`;
     return new RegExp(expression).test(pageUrl);
   } catch {
     return false;
@@ -83,7 +83,8 @@ function buildSkippySiteVisibilityUpdates(sites, pageUrl) {
 /**
  * Build the top-level Skippy settings entries.
  * @param {ReadonlyArray<string>} urlPatterns URL patterns where Skippy is supported.
- * @returns {Array<object>} Settings menu payloads.
+ * @param {object} settings Current settings, including enabled search providers.
+ * @returns {Array<object>} Unique settings menu payloads; no side effects or raised errors.
  */
 function buildSkippyRootMenuItems(urlPatterns, settings) {
   const providers = globalThis.SkippyStorage?.SKIPPY_SEARCH_PROVIDERS || [];
@@ -98,7 +99,7 @@ function buildSkippyRootMenuItems(urlPatterns, settings) {
     ...providers
       .filter((provider) => settings?.searchProviders?.[provider.id] === true)
       .map((provider) => ({
-        id: `parentId:{provider.id}`,
+        id: `${parentId}:${provider.id}`,
         parentId,
         title: provider.label,
         contexts: ["all"],

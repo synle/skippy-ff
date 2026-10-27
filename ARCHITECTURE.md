@@ -74,6 +74,14 @@ Single source of truth for settings. Wraps `chrome.storage.sync` with a defaults
 
 Every adapter calls this helper at the top of its `findXxxSkipButton(settings)` invocation and consumes the resolved object instead of reading `settings.skipIntro` / `settings.enabledSites[host]` directly.
 
+### `src/helpers/diagnostics.js`
+
+Classic-script `globalThis.SkippyDiagnostics` exposes `init(context)` and `record(kind, error?, metrics?)`. Content scripts load it before storage/core/adapters; core installs content hooks before the adapter executes. The worker imports and initializes it before importing storage/menu, allowing best-effort import-error capture. Registration is synchronous; persistence waits in a serialized worker-owned queue.
+
+Only the worker writes `skippyDiagnostics` in `chrome.storage.local`. It keeps 80 sanitized events, limits pending operations to 20, and admits at most 20 events per minute per context. A rejected operation cannot poison subsequent writes. Error evidence contains allowlisted error types and Skippy file/line frames, not arbitrary messages or external URLs. Supported site keys come from authenticated Chrome sender metadata and the existing menu URL matcher, not message-supplied identity.
+
+Internal `SKIPPY_DIAGNOSTICS` messages support `record` from supported content tabs and `export`/`clear` from the exact extension options-page URL. Export and clear share the write queue. The options-only `src/pages/options/diagnostics.js` renders copyable JSON and accessible error status. No remote telemetry, new permissions, heartbeat, or keepalive is used. Native crash attribution stays unknown; normal worker restarts are informational. See `DEV.md` for retention, privacy, and Brave/Windows triage limits.
+
 ### `src/content/skippy-core.js`
 
 Site-agnostic primitives. **Classic script** (MV3 content scripts can't be ES modules) that attaches helpers to `globalThis.SkippyCore`.
@@ -149,7 +157,7 @@ Next poll tick uses the new settings
 
 `vite.config.js` defines two custom plugins:
 
-1. **`skippy-copy-manifest`** — Reads `src/manifest.json`, rewrites `version` from `package.json` (and appends `(DEV)` to the name in `--watch` mode), writes to `dist/manifest.json`. Also `copyFileSync`s every content script, `helpers/storage.js`, `helpers/menu.js`, and `background.js` verbatim into `dist/` — these are not Vite inputs.
+1. **`skippy-copy-manifest`** — Reads `src/manifest.json`, rewrites `version` from `package.json` (and appends `(DEV)` to the name in `--watch` mode), writes to `dist/manifest.json`. Also `copyFileSync`s every content script, `helpers/storage.js`, `helpers/menu.js`, `helpers/diagnostics.js`, and `background.js` verbatim into `dist/` — these are not Vite inputs.
 2. **`skippy-move-html`** — Vite emits HTML into `dist/src/pages/…`. This plugin moves them to `dist/pages/…` and rewrites root-style asset paths (`/chunks/…`, `/assets/…`) to relative so they resolve under `chrome-extension://`.
 
 `publicDir: "public"` — icons land at `dist/` root, matching paths in `manifest.json`'s `icons` field.

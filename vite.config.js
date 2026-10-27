@@ -1,5 +1,6 @@
 /** Vite build configuration for the Skippy Chrome Extension. */
 import { defineConfig } from "vite";
+import process from "node:process";
 import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync, rmSync } from "fs";
@@ -13,7 +14,7 @@ export default defineConfig({
     environment: "jsdom",
     coverage: {
       provider: "v8",
-      reporter: ["text", "text-summary", "json-summary", "html"],
+      reporter: ["text", "text-summary", "json-summary", "json", "html"],
       reportsDirectory: "coverage",
       // Coverage is scoped to code that is actually unit-tested via Vitest. Site adapters
       // (`src/content/skippy-{crunchyroll,disneyplus,appletv}.js`) and the options-page
@@ -23,7 +24,12 @@ export default defineConfig({
       // checks, click dispatch, polling loop), which IS fixturable in jsdom, so it stays
       // in scope. `background.js` is likewise fixturable — `tests/background.test.js`
       // stubs `importScripts` + `chrome.contextMenus` and drives the real service worker.
-      include: ["src/helpers/**/*.{js,ts}", "src/content/skippy-core.js", "src/background.js"],
+      include: [
+        "src/helpers/**/*.{js,ts}",
+        "src/content/skippy-core.js",
+        "src/background.js",
+        "src/pages/options/diagnostics.js",
+      ],
       exclude: [
         "src/**/*.{test,spec}.{js,ts}",
         "src/**/*.d.ts",
@@ -138,6 +144,10 @@ export default defineConfig({
         mkdirSync(helpersDir, { recursive: true });
         copyFileSync(resolve(__dirname, "src/helpers/storage.js"), join(helpersDir, "storage.js"));
         copyFileSync(resolve(__dirname, "src/helpers/menu.js"), join(helpersDir, "menu.js"));
+        copyFileSync(
+          resolve(__dirname, "src/helpers/diagnostics.js"),
+          join(helpersDir, "diagnostics.js"),
+        );
 
         // Background service worker — loaded as a classic SW; pulls in helpers via importScripts.
         copyFileSync(

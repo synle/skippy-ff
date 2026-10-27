@@ -1,6 +1,7 @@
 /** Skippy options page controller. Binds master + per-site controls to chrome.storage.sync via SkippyStorage. */
 
 import "../../helpers/storage.js";
+import "./diagnostics.js";
 
 /** Top-level skip flags that appear on the master card. Mirrored in `SKIPPY_FLAG_KEYS`. */
 const FLAG_IDS = ["skipIntro", "skipRecap", "skipCredits", "nextEpisode", "verboseLogging"];

@@ -90,6 +90,12 @@ Each site card has an **Enable** toggle, a **Follow master settings** toggle, an
 
 Settings are stored in `chrome.storage.sync` and roam across signed-in Chrome profiles.
 
+## Crash diagnostics
+
+Open **Debugging → Export diagnostics JSON** in Skippy settings to copy a bounded local report. It includes sanitized Skippy error evidence and your browser user agent. Review before sharing; nothing is uploaded automatically. **Clear local diagnostics** removes the report trail without changing settings.
+
+Native Brave/Chrome crashes cannot be attributed from extension logs alone. For Windows Brave crashes, collect the matching uploaded report ID from `brave://crashes` and follow `DEV.md` → **Persistent diagnostics and Brave/Windows crash triage**. Normal extension worker sleep is not a crash.
+
 ## Documentation
 
 - `ARCHITECTURE.md` — system map (components, data flow, build pipeline, CI/CD).

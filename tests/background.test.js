@@ -81,6 +81,7 @@ async function loadBackground(chrome) {
   // MV3 classic service worker: `importScripts` pulls the helpers into global scope. jsdom
   // has no such function, so stub it and load the helpers as modules for their side effects.
   vi.stubGlobal("importScripts", () => {});
+  vi.stubGlobal("SkippyDiagnostics", { init: vi.fn(), record: vi.fn() });
   await import("../src/helpers/storage.js");
   await import("../src/helpers/menu.js");
   await import("../src/background.js");
@@ -132,6 +133,10 @@ describe("background context-menu rebuild", () => {
     expect(roots).toEqual(
       globalThis.SkippyStorage.SKIPPY_SITES.map((site) => `skippy:${site.host}:root`),
     );
+    expect(new Set(mock.create.mock.calls.map(([payload]) => payload.id)).size).toBe(102);
+    expect(globalThis.SkippyDiagnostics.record).toHaveBeenCalledWith("menu_ready", null, {
+      menuItems: 102,
+    });
   });
 
   it("shows only the current site's branch when Chrome opens the toolbar menu", async () => {

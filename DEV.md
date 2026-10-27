@@ -54,7 +54,7 @@ The manifest's `name` is suffixed with `(DEV)` in watch mode so you can tell whi
 Three touches + one shared list. See `ARCHITECTURE.md` § Build pipeline for the why.
 
 1. **Adapter** — create `src/content/skippy-<site>.js`. End with `SkippyCore.skippyStart(adapter)`. The adapter signature is `(settings) => HTMLElement | null` and should resolve the effective flags via `SkippyStorage.getEffectiveSiteSettings(settings, "<host>")` at the top. Refer to `skippy-appletv.js` for the multi-strategy template (testid → class → text), `skippy-disneyplus.js` for shadow-DOM traversal, `skippy-crunchyroll.js` for the simple `aria-label` case, `skippy-netflix.js` for the forgiving `data-uia` substring + normalized case-insensitive text fallback, `skippy-primevideo.js` for the class-substring + multi-text-label variant (Amazon's `atvwebplayersdk-*` prefix + Skip Intro / Skip intro casing variance).
-2. **Manifest** — add a `content_scripts` entry in `src/manifest.json` with the site's host patterns under `matches`, and list `helpers/storage.js`, `content/skippy-core.js`, then your new adapter under `js` (order matters: globals before consumers).
+2. **Manifest** — add a `content_scripts` entry in `src/manifest.json` with the site's host patterns under `matches`, and list `helpers/diagnostics.js`, `helpers/storage.js`, `content/skippy-core.js`, then your new adapter under `js` (order matters: globals before consumers).
 3. **Build plugin** — add a `copyFileSync` line in `vite.config.js`'s `skippy-copy-manifest` plugin for the new content script. Content scripts are **not** Vite inputs — they're copied verbatim because MV3 content scripts can't be ES modules.
 4. **Centralized site list** — append a `{ host, label, urlPatterns }` entry to `SKIPPY_SITES` in `src/helpers/storage.js` and add the host to `SKIPPY_DEFAULTS.enabledSites` with `true`. The `urlPatterns` array must mirror the manifest `matches`. Both the options-page site cards and the background service worker's context menu are generated from this list — no extra UI wiring.
 
@@ -93,6 +93,29 @@ What you'll see:
 - Per-adapter `scan: …` lines — what selectors matched, candidate counts, visibility decisions.
 - `[Skippy] clicking <label> <element>` — always emitted, regardless of verbose flag. This is the load-bearing signal that Skippy actually fired.
 
+### Persistent diagnostics and Brave/Windows crash triage
+
+Skippy records a local-only, bounded diagnostic trail independently of verbose console logging. Open **Debugging → Export diagnostics JSON**, then copy the displayed JSON. **Clear local diagnostics** deletes only this trail, not settings. Reload the extension and streaming tabs after installing this build.
+
+The trail retains up to 80 events in `chrome.storage.local`: error types, Skippy file/line frames, timestamps, supported site keys, and bounded counters. It excludes raw exception messages, function names, full browsing URLs, page titles, and other-extension inventories. Exports also include extension version and browser user agent; review before sharing. No data is uploaded or synced.
+
+Events include caught adapter/settings/menu failures, best-effort own-script global errors/rejections, worker/content starts, menu item counts, and polling pause/resume timer counts. `menu_ready` means the rebuild finished attempting its items; check adjacent `menu_error` records before treating it as successful. Each context admits at most 20 events per minute; the worker also caps queued operations at 20. Overflow is dropped, never retried. Drop/write-failure counters cover the current worker lifetime only. Final events can be lost when a renderer or browser dies before persistence.
+
+**Do not classify worker sleep as a crash.** MV3 normally terminates idle workers after 30 seconds; lifecycle gaps and disconnected ports do not establish native crash, OOM, or another-extension conflict. This implementation adds no heartbeat, keepalive port, new permission, or periodic storage writes. Content scripts run in isolated worlds, so foreign errors are not reliably observable and are not collected.
+
+For Windows Brave reports:
+
+1. Record crash time/time zone, affected site, exact Brave/Chromium version, Windows version, and whether one tab or the whole browser closed.
+2. After restarting, export Skippy diagnostics. Compare preceding error frames and counters with the crash time; correlation is not attribution.
+3. Open `brave://crashes` manually. Brave documents **Send now** and an **Uploaded crash report ID** after submission. Sending shares native crash data with Brave; do so only intentionally.
+4. Provide that uploaded ID to Brave support with the version and timestamp. An extension cannot read the native dump or prove GPU/OOM attribution through these hooks.
+5. Reproduce in a separate test profile using the same content and versions: no extensions, Skippy only, other extensions only, then Skippy plus others. Keep the daily profile unchanged.
+6. If only a combination reproduces, enable other extensions in halves within the test profile. If no-extension runs also crash, investigate Brave/Windows/graphics drivers with native reports.
+
+No Windows native-crash reproduction was performed for this change. Synthetic JS exceptions test logging, not browser crash detection. Never deliberately crash a daily browser to test this feature.
+
+Sources: [Chrome worker lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle), [content-script isolation](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts), [Dev-channel-only processes API](https://developer.chrome.com/docs/extensions/reference/api/processes), [Brave manual crash reporting](https://support.brave.app/hc/en-us/articles/22281484910221-How-do-I-manually-submit-crash-reports). Brave reporting instructions were verified from its search excerpt; direct retrieval returned HTTP 403.
+
 ### `__skippy()` inspector
 
 Each adapter installs a `__skippy()` function on the page's `window`. Paste it in the Console to dump current state — visible candidates, rects, shadow-root presence. Works regardless of the verbose-logging setting; useful for one-off probes without committing to the noisy stream.
@@ -120,14 +143,17 @@ npm run test:coverage  # with coverage gate (thresholds in vite.config.js)
 
 Tests live in `tests/`. Chrome APIs are mocked via `tests/_chromeMock.js` and `vi.stubGlobal("chrome", chrome)`. The mock implements the slice of `chrome.storage` and `chrome.storage.onChanged` that `helpers/storage.js` actually uses.
 
-| File                   | Covers                                                                                 |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| `storage.test.js`      | `SkippyStorage` — defaults, merge semantics, clamping, per-site override resolution    |
-| `menu.test.js`         | `SkippyMenu` — pure context-menu shape + id parsing                                    |
-| `visibility.test.js`   | `skippyIsVisible` / `skippyIsPresent` / `skippyFindVisible` DOM predicates             |
-| `core.test.js`         | `skippyClick`, the verbose-log gate, the steady-state polling loop                     |
-| `core-startup.test.js` | Once-per-lifetime core paths — pre-settings log buffer, settings-read failure          |
-| `background.test.js`   | The service worker — rebuild serialization, create-error reporting, menu-click routing |
+| File                          | Covers                                                                                    |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| `storage.test.js`             | `SkippyStorage` — defaults, merge semantics, clamping, per-site override resolution       |
+| `menu.test.js`                | `SkippyMenu` — pure context-menu shape + id parsing                                       |
+| `visibility.test.js`          | `skippyIsVisible` / `skippyIsPresent` / `skippyFindVisible` DOM predicates                |
+| `core.test.js`                | `skippyClick`, the verbose-log gate, the steady-state polling loop                        |
+| `core-startup.test.js`        | Once-per-lifetime core paths — pre-settings log buffer, settings-read failure             |
+| `background.test.js`          | The service worker — rebuild serialization, create-error reporting, menu-click routing    |
+| `diagnostics.test.js`         | Local persistence, bounded queues/rate, privacy, sender validation, normal worker restart |
+| `core-diagnostics.test.js`    | Caught-failure instrumentation and hidden-tab timeout ownership                           |
+| `options-diagnostics.test.js` | Real options DOM export/clear interactions and failure reporting                          |
 
 `background.test.js` stubs `importScripts` (jsdom has no such function) and loads the helpers as modules, then drives the real worker through the listeners it registers. Both `core-startup.test.js` and `background.test.js` call `vi.resetModules()` per case because the code under test keeps latches in module scope.
 
