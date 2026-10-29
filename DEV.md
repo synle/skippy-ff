@@ -4,7 +4,7 @@ Local workflows for Skippy. Read alongside `ARCHITECTURE.md` for the system map 
 
 ## Prereqs
 
-- Node matching `package.json` → `volta.node` (currently 20.19.1).
+- Node matching `package.json` → `volta.node`.
 - Chrome with Developer mode enabled.
 
 ## First-time setup
@@ -13,6 +13,8 @@ Local workflows for Skippy. Read alongside `ARCHITECTURE.md` for the system map 
 npm ci --ignore-scripts
 npm run build      # produces dist/ and storage declarations in types/
 ```
+
+If an install needs a dependency lifecycle script, review that script before running it separately.
 
 Then in Chrome:
 
@@ -69,9 +71,9 @@ Selector examples in `src/content/`:
 
 Update README supported sites and settings, plus `AGENTS.md` / `ARCHITECTURE.md` / this guide when their guidance changes. AMC+ and Shudder already share an adapter; retain separate site keys.
 
-After the final edits, run `npm run validate`, reload the extension, and test the live site. Inspect the formatter's diff before staging. Never hand-edit generated `dist/` or `types/` files.
+After editing, follow § Tests for final validation, then reload the extension and test the live site. Never hand-edit generated `dist/` or `types/` files.
 
-`build:types` emits storage declarations with `checkJs: false`; it is not full JavaScript type checking. If an install needs a dependency lifecycle script, review that script before running it separately.
+For declaration-emission scope and build wiring, read `ARCHITECTURE.md` § Build pipeline.
 
 ## Right-click context menu
 
@@ -80,7 +82,7 @@ A background service worker (`src/background.js`) registers top-level **Skippy `
 - **Enable on `<Site>`** — toggles `enabledSites[host]`.
 - **Follow master settings** — inverse of `siteOverrides[host].useOverride`.
 - **Skip Intro / Skip Recap / Skip Credits / Auto start next episode** — toggling any flag flips `useOverride` true on the site (same behavior as the options page card).
-- **Search Movie Information** — opens an encoded provider search using selected text, or the decoded final URL path segment as fallback. It does not read the page title. Choose providers in settings; Rotten Tomatoes and Google default on, IMDb defaults off. Provider order follows `SKIPPY_SEARCH_PROVIDERS`.
+- **Search Movie Information** — opens an encoded provider search using selected text, or the decoded final URL path segment as fallback. It does not read the page title. Choose providers in settings. Read `README.md` § Defaults for default states. Provider order follows `SKIPPY_SEARCH_PROVIDERS`.
 
 When the site is disabled, the four flag rows and "Follow master settings" are hidden; only Enable remains in that site's branch.
 
@@ -161,7 +163,7 @@ Use a separate test profile with multiple supported tabs, including hidden tabs:
 - Hide and restore streaming tabs; confirm no hidden-tab scans and only one timeout on resume.
 - Compare caught-error evidence with the actual failure; `menu_ready` records attempted items, not guaranteed success.
 
-Live browser checks complement jsdom tests; they do not prove a native crash cause.
+Run these browser checks alongside automated tests. For native-crash reports, follow § Persistent diagnostics and Brave/Windows crash triage.
 
 ## Tests
 
@@ -194,11 +196,9 @@ Adapter logic (DOM selectors, visibility) is tested manually in the browser. Pin
 
 ## Release
 
-Read `.claude/skills/release/SKILL.md` for release requests; `/skill:release` is the documented entry point. Official releases use clean, validated `main` synchronized with `origin/main`; beta accepts an explicitly requested remote commit.
+For release requests, read `.claude/skills/release/SKILL.md` (`/skill:release`). It owns routing, prerequisites, duplicate-release checks, summaries, confirmations, and custom-note restrictions.
 
-Unspecified requests mean official. Beta requires explicit beta/prerelease/test wording, never branch or SHA inference. The skill checks for an in-progress release before dispatching. It summarizes commits since the last official release and leaves custom notes/changesets unset so the workflow generates notes. It asks no routing or confirmation questions when the requested action is clear.
-
-The official workflow bumps `npm version minor`, drafts a release, runs `npm run package`, commits the bump back to main, and publishes the release with `skippy-ff.zip` attached. Beta uses `release-beta.yml`. See `ARCHITECTURE.md` § CI/CD.
+For workflow versioning, artifacts, and tag resolution, see `ARCHITECTURE.md` § CI/CD.
 
 For local one-off bundling without dispatching a release:
 

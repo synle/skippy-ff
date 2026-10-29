@@ -10,7 +10,7 @@ Skippy is a Chrome MV3 extension that auto-clicks streaming skip buttons. It use
 
 ## Rules
 
-1. **`npm run validate` before every commit** — runs test, lint, build, then format. It rewrites formatting; inspect the resulting diff before staging. Coverage is separate: see `DEV.md` § Tests.
+1. **`npm run validate` before every commit** — follow `DEV.md` § Tests for the final-gate procedure, formatter review, and separate coverage checks.
 2. **JSDoc every touched function** — document a one-line description, params, return, raised errors, and side effects. Update documentation with signature or behavior changes. Trivial one-liners can skip.
 3. **Add a test for every behavior change** in storage, menu, background, core helpers, polling lifecycle, and diagnostics, including the diagnostics UI. Keep adapter DOM-selector checks manual in the browser; see `DEV.md` § Debugging and § Tests.
 4. **Squash merge only.** Never use merge commits or rebase merges for PRs. Use the local Git commit identity.
@@ -19,7 +19,7 @@ Skippy is a Chrome MV3 extension that auto-clicks streaming skip buttons. It use
 7. **Content scripts AND the background service worker are classic scripts, not ES modules.** Share runtime helpers through `globalThis.SkippyStorage`, `SkippyCore`, `SkippyMenu`, and `SkippyDiagnostics`. Use `importScripts` in the worker; the options page is the only extension ES-module surface.
 8. **Routine diagnostic logs go through `SkippyCore.skippyLog` / `skippyDLog`** and require `settings.verboseLogging`. Keep the `[Skippy] clicking …` line always on. Failure warnings and bounded local diagnostics also remain independent of verbose logging; do not silence those failure paths.
 9. **Settings defaults are additive**, never breaking. Add new flags to `SKIPPY_DEFAULTS`, hydrate in `options.js`, and render controls in `options.html`. Choose defaults that preserve existing behavior.
-10. **Use one release skill.** Read `.claude/skills/release/SKILL.md` for release requests; `/skill:release` is the documented entry point. Unspecified requests mean official; beta requires explicit beta/prerelease/test wording, never branch or SHA inference. Ask no routing or confirmation questions when the action is clear. Summarize commits since the last official release and leave custom notes/changesets unset. Official releases are manual dispatches; use the workflow's resolve-tag action, never a `github.ref_name` fallback. See `ARCHITECTURE.md` § CI/CD.
+10. **Use one release skill.** For release requests, read `.claude/skills/release/SKILL.md` (`/skill:release`). It owns routing, confirmation behavior, summaries, and custom-note restrictions. For manual dispatch and tag-resolution constraints, see `ARCHITECTURE.md` § CI/CD.
 
 ## Runtime regression boundaries
 

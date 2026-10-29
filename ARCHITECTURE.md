@@ -41,19 +41,19 @@ Content scripts and the worker share helpers through `globalThis`, not ES-module
 
 `SKIPPY_SEARCH_PROVIDERS` defines provider IDs, labels, display order, and URL templates. `SKIPPY_FLAG_KEYS` defines the four skip flags shared by master settings and site overrides.
 
-**Settings shape** (`SKIPPY_DEFAULTS`):
+**Settings schema:** `SKIPPY_DEFAULTS` supplies current values. For user-facing defaults, read `README.md` § Defaults.
 
-| Key               | Type                           | Default                                               | Purpose                                                                      |
-| ----------------- | ------------------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `skipIntro`       | `boolean`                      | `true`                                                | Click intro skip buttons                                                     |
-| `skipRecap`       | `boolean`                      | `true`                                                | Click recap skip buttons                                                     |
-| `skipCredits`     | `boolean`                      | `true`                                                | Click credits skip buttons                                                   |
-| `nextEpisode`     | `boolean`                      | `true`                                                | Start the next episode; independent of credits skipping                      |
-| `verboseLogging`  | `boolean`                      | `false`                                               | Enable routine content-script console diagnostics                            |
-| `pollIntervalMs`  | `number`                       | `500`                                                 | Scan cadence in milliseconds; clamped to 100–5000 on save and during polling |
-| `enabledSites`    | `Record<string, boolean>`      | all on                                                | Enable or disable each supported site                                        |
-| `siteOverrides`   | `Record<string, SiteOverride>` | `{}`                                                  | Per-site skip flags and `useOverride`                                        |
-| `searchProviders` | `Record<string, boolean>`      | `{ rottentomatoes: true, imdb: false, google: true }` | Choose title-search menu providers                                           |
+| Key               | Type                           | Purpose                                                                      |
+| ----------------- | ------------------------------ | ---------------------------------------------------------------------------- |
+| `skipIntro`       | `boolean`                      | Click intro skip buttons                                                     |
+| `skipRecap`       | `boolean`                      | Click recap skip buttons                                                     |
+| `skipCredits`     | `boolean`                      | Click credits skip buttons                                                   |
+| `nextEpisode`     | `boolean`                      | Start the next episode independently of credits skipping                     |
+| `verboseLogging`  | `boolean`                      | Enable routine content-script console diagnostics                            |
+| `pollIntervalMs`  | `number`                       | Scan cadence in milliseconds; clamped to 100–5000 on save and during polling |
+| `enabledSites`    | `Record<string, boolean>`      | Enable or disable each supported site                                        |
+| `siteOverrides`   | `Record<string, SiteOverride>` | Per-site skip flags and `useOverride`                                        |
+| `searchProviders` | `Record<string, boolean>`      | Choose title-search menu providers                                           |
 
 `getSkippySettings()` merges defaults with persisted values. It merges enabled sites and search providers by key, and each site override against `SKIPPY_SITE_OVERRIDE_DEFAULTS`.
 
@@ -163,9 +163,7 @@ Adding a site touches four source files; follow `DEV.md` § Adding a new streami
 
 Vitest runs in jsdom. Storage tests use `tests/_chromeMock.js`; worker tests stub `importScripts` and context-menu APIs to drive registered listeners.
 
-Automated coverage includes storage, menu/search helpers, core predicates/clicks/polling, background lifecycle, diagnostics, and diagnostics UI interactions. Live adapter selectors and browser-native crash behavior require manual checks.
-
-`npm run validate` runs tests, lint, build, and the writing formatter. Coverage is a separate command and CI job. See `DEV.md` § Tests for scope and thresholds.
+For automated scope, coverage gates, and manual browser checks, read `DEV.md` § Tests.
 
 ## CI/CD
 
@@ -173,6 +171,6 @@ Automated coverage includes storage, menu/search helpers, core predicates/clicks
 - **`release-official.yml`** is manual `workflow_dispatch`. It bumps the minor version, resolves a tag, drafts a release, packages the extension, commits the bump, and finalizes the release.
 - **`release-beta.yml`** is manual dispatch with an optional SHA. It marks the packaged manifest as beta, restores the source manifest afterward, and finalizes through the beta channel.
 
-Release requests use `.claude/skills/release/SKILL.md`; unspecified requests mean official, not inferred beta. The skill summarizes commits since the last official release and leaves custom notes/changesets unset.
+For release requests, read `.claude/skills/release/SKILL.md` (`/skill:release`). The skill owns release policy.
 
-Tag derivation uses the workflows' `resolve-tag` action, never a `github.ref_name` fallback. See `DEV.md` § Release for the local workflow.
+Tag derivation uses the workflows' `resolve-tag` action, never a `github.ref_name` fallback. For local bundling without release dispatch, see `DEV.md` § Release.
