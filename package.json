@@ -21,6 +21,7 @@
     "package": "npm run build && npm run bundle",
     "package-syle": "npm run package",
     "test": "vitest run",
+    "test:update-snapshots": "vitest run --update",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/",
     "format": "oxfmt --write .",

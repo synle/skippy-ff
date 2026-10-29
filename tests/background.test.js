@@ -153,10 +153,13 @@ describe("background context-menu rebuild", () => {
       { visible: true },
       expect.any(Function),
     );
-    expect(mock.update.mock.calls.filter(([, props]) => props.visible).map(([id]) => id)).toEqual([
-      "skippy:netflix.com:root",
-      "skippy:search",
-    ]);
+    expect(mock.update.mock.calls.filter(([, props]) => props.visible).map(([id]) => id))
+      .toMatchInlineSnapshot(`
+      [
+        "skippy:netflix.com:root",
+        "skippy:search",
+      ]
+    `);
     expect(mock.update.mock.calls.filter(([, props]) => !props.visible)).toHaveLength(
       globalThis.SkippyStorage.SKIPPY_SITES.length,
     );
@@ -328,11 +331,15 @@ describe("background context-menu click routing", () => {
   it("flips useOverride true when an individual flag is toggled", async () => {
     await click("skippy:tubitv.com:flag:skipIntro", false);
     const saved = mock.set.mock.calls.at(-1)[0].skippySettings;
-    expect(saved.siteOverrides["tubitv.com"]).toMatchObject({
-      useOverride: true,
-      skipIntro: false,
-      skipRecap: true,
-    });
+    expect(saved.siteOverrides["tubitv.com"]).toMatchInlineSnapshot(`
+      {
+        "nextEpisode": true,
+        "skipCredits": true,
+        "skipIntro": false,
+        "skipRecap": true,
+        "useOverride": true,
+      }
+    `);
   });
 
   it("opens an encoded Google search from the title-search submenu", async () => {

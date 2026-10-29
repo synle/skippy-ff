@@ -17,7 +17,6 @@ const {
   parseSkippyMenuItemId,
   extractTitleSearchQuery,
   buildTitleSearchUrl,
-  SKIPPY_MENU_FLAG_LABELS,
   SKIPPY_MENU_PARENT_TITLE,
 } = globalThis.SkippyMenu;
 const { getSkippySettings, saveSkippySettings, SKIPPY_SITES } = globalThis.SkippyStorage;
@@ -39,16 +38,129 @@ describe("buildSkippyContextMenuItems", () => {
     const items = buildSkippyContextMenuItems(settings, crunchyroll);
 
     // Order matters — Chrome renders in creation order.
-    const titles = items.filter((i) => i.title).map((i) => i.title);
-    expect(titles).toEqual([
-      "Skippy Crunchyroll Settings",
-      "Enable on Crunchyroll",
-      "Follow master settings",
-      SKIPPY_MENU_FLAG_LABELS.skipIntro,
-      SKIPPY_MENU_FLAG_LABELS.skipRecap,
-      SKIPPY_MENU_FLAG_LABELS.skipCredits,
-      SKIPPY_MENU_FLAG_LABELS.nextEpisode,
-    ]);
+    expect(items).toMatchInlineSnapshot(`
+      [
+        {
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:root",
+          "title": "Skippy Crunchyroll Settings",
+        },
+        {
+          "checked": true,
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:enable",
+          "parentId": "skippy:crunchyroll.com:root",
+          "title": "Enable on Crunchyroll",
+          "type": "checkbox",
+        },
+        {
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:sep-top",
+          "parentId": "skippy:crunchyroll.com:root",
+          "type": "separator",
+        },
+        {
+          "checked": true,
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:follow",
+          "parentId": "skippy:crunchyroll.com:root",
+          "title": "Follow master settings",
+          "type": "checkbox",
+        },
+        {
+          "checked": true,
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:flag:skipIntro",
+          "parentId": "skippy:crunchyroll.com:root",
+          "title": "Skip Intro",
+          "type": "checkbox",
+        },
+        {
+          "checked": true,
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:flag:skipRecap",
+          "parentId": "skippy:crunchyroll.com:root",
+          "title": "Skip Recap",
+          "type": "checkbox",
+        },
+        {
+          "checked": true,
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:flag:skipCredits",
+          "parentId": "skippy:crunchyroll.com:root",
+          "title": "Skip Credits",
+          "type": "checkbox",
+        },
+        {
+          "checked": true,
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:flag:nextEpisode",
+          "parentId": "skippy:crunchyroll.com:root",
+          "title": "Auto start next episode",
+          "type": "checkbox",
+        },
+        {
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:sep-bottom",
+          "parentId": "skippy:crunchyroll.com:root",
+          "type": "separator",
+        },
+      ]
+    `);
 
     expect(findItem(items, ":enable").checked).toBe(true);
     expect(findItem(items, ":follow").checked).toBe(true);
@@ -65,8 +177,35 @@ describe("buildSkippyContextMenuItems", () => {
     const settings = await getSkippySettings();
     const items = buildSkippyContextMenuItems(settings, crunchyroll);
 
-    const titles = items.filter((i) => i.title).map((i) => i.title);
-    expect(titles).toEqual(["Skippy Crunchyroll Settings", "Enable on Crunchyroll"]);
+    expect(items).toMatchInlineSnapshot(`
+      [
+        {
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:root",
+          "title": "Skippy Crunchyroll Settings",
+        },
+        {
+          "checked": false,
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+            "https://beta.crunchyroll.com/*",
+          ],
+          "id": "skippy:crunchyroll.com:enable",
+          "parentId": "skippy:crunchyroll.com:root",
+          "title": "Enable on Crunchyroll",
+          "type": "checkbox",
+        },
+      ]
+    `);
     expect(findItem(items, ":enable").checked).toBe(false);
     expect(items.filter((i) => i.type === "separator")).toHaveLength(0);
     // Flag items must not be present.
@@ -129,11 +268,42 @@ describe("buildSkippyContextMenuItems", () => {
   it("builds enabled title providers in configured order", async () => {
     const settings = await getSkippySettings();
     const items = buildSkippyRootMenuItems(["https://www.crunchyroll.com/*"], settings);
-    expect(items.map((item) => item.title)).toEqual([
-      "Search Movie Information",
-      "Rotten Tomatoes",
-      "Google",
-    ]);
+    expect(items).toMatchInlineSnapshot(`
+      [
+        {
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+          ],
+          "id": "skippy:search",
+          "title": "Search Movie Information",
+        },
+        {
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+          ],
+          "id": "skippy:search:rottentomatoes",
+          "parentId": "skippy:search",
+          "title": "Rotten Tomatoes",
+        },
+        {
+          "contexts": [
+            "all",
+          ],
+          "documentUrlPatterns": [
+            "https://www.crunchyroll.com/*",
+          ],
+          "id": "skippy:search:google",
+          "parentId": "skippy:search",
+          "title": "Google",
+        },
+      ]
+    `);
     expect(items[1].id).toBe("skippy:search:rottentomatoes");
     expect(items[2].id).toBe("skippy:search:google");
   });
@@ -159,14 +329,55 @@ describe("buildSkippyContextMenuItems", () => {
 
 describe("buildSkippySiteVisibilityUpdates", () => {
   it("matches only the site owning the current page URL", () => {
-    expect(
-      buildSkippySiteVisibilityUpdates(SKIPPY_SITES, "https://www.netflix.com/title/1"),
-    ).toEqual(
-      SKIPPY_SITES.map((site) => ({
-        id: `skippy:${site.host}:root`,
-        visible: site.host === "netflix.com",
-      })),
-    );
+    expect(buildSkippySiteVisibilityUpdates(SKIPPY_SITES, "https://www.netflix.com/title/1"))
+      .toMatchInlineSnapshot(`
+      [
+        {
+          "id": "skippy:crunchyroll.com:root",
+          "visible": false,
+        },
+        {
+          "id": "skippy:disneyplus.com:root",
+          "visible": false,
+        },
+        {
+          "id": "skippy:tv.apple.com:root",
+          "visible": false,
+        },
+        {
+          "id": "skippy:netflix.com:root",
+          "visible": true,
+        },
+        {
+          "id": "skippy:primevideo.com:root",
+          "visible": false,
+        },
+        {
+          "id": "skippy:max.com:root",
+          "visible": false,
+        },
+        {
+          "id": "skippy:paramountplus.com:root",
+          "visible": false,
+        },
+        {
+          "id": "skippy:peacocktv.com:root",
+          "visible": false,
+        },
+        {
+          "id": "skippy:tubitv.com:root",
+          "visible": false,
+        },
+        {
+          "id": "skippy:amcplus.com:root",
+          "visible": false,
+        },
+        {
+          "id": "skippy:shudder.com:root",
+          "visible": false,
+        },
+      ]
+    `);
   });
 
   it("hides every site branch for unsupported URLs", () => {
@@ -180,11 +391,13 @@ describe("buildSkippySiteVisibilityUpdates", () => {
 
 describe("parseSkippyMenuItemId", () => {
   it("parses a title search action", () => {
-    expect(parseSkippyMenuItemId("skippy:search:google")).toEqual({
-      host: "search",
-      action: "search",
-      service: "google",
-    });
+    expect(parseSkippyMenuItemId("skippy:search:google")).toMatchInlineSnapshot(`
+      {
+        "action": "search",
+        "host": "search",
+        "service": "google",
+      }
+    `);
   });
 
   it("returns null for non-Skippy ids — third-party menu items pass through", () => {

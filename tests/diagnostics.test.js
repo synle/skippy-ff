@@ -97,7 +97,12 @@ describe("local diagnostic evidence", () => {
     await import("../src/helpers/diagnostics.js");
     globalThis.SkippyDiagnostics.init("background");
     const result = await report();
-    expect(result.events.map((entry) => entry.kind)).toEqual(["worker_start", "worker_start"]);
+    expect(result.events.map((entry) => entry.kind)).toMatchInlineSnapshot(`
+      [
+        "worker_start",
+        "worker_start",
+      ]
+    `);
     expect(result.attribution).toBe(
       "unknown; JavaScript errors and lifecycle events do not prove a native crash cause",
     );
@@ -122,17 +127,25 @@ describe("local diagnostic evidence", () => {
       request("record", contentSender, { event: { ...event, kind: "settings_error" } }),
     ]);
     const events = (await report()).events;
-    expect(events.map((entry) => entry.kind)).toEqual([
-      "worker_start",
-      "adapter_error",
-      "settings_error",
-    ]);
-    expect(events[1]).toEqual({
-      ...event,
-      context: "content",
-      site: "netflix.com",
-      timestamp: 1767225600000,
-    });
+    expect(events.map((entry) => entry.kind)).toMatchInlineSnapshot(`
+      [
+        "worker_start",
+        "adapter_error",
+        "settings_error",
+      ]
+    `);
+    expect(events[1]).toMatchInlineSnapshot(`
+      {
+        "context": "content",
+        "frames": [
+          "content/skippy-netflix.js:12:3",
+        ],
+        "kind": "adapter_error",
+        "name": "TypeError",
+        "site": "netflix.com",
+        "timestamp": 1767225600000,
+      }
+    `);
     expect(JSON.stringify(events)).not.toContain("private");
     expect(JSON.stringify(events)).not.toContain("secret");
   });
@@ -147,14 +160,18 @@ describe("local diagnostic evidence", () => {
     });
     hooks.unhandledrejection({ reason: "private-token" });
     const events = (await report()).events;
-    expect(events[1]).toEqual({
-      kind: "error",
-      name: "TypeError",
-      frames: ["background.js:10:2"],
-      context: "background",
-      site: null,
-      timestamp: 1767225600000,
-    });
+    expect(events[1]).toMatchInlineSnapshot(`
+      {
+        "context": "background",
+        "frames": [
+          "background.js:10:2",
+        ],
+        "kind": "error",
+        "name": "TypeError",
+        "site": null,
+        "timestamp": 1767225600000,
+      }
+    `);
     expect(events[2].kind).toBe("unhandled_rejection");
     expect(JSON.stringify(events)).not.toContain("private");
     expect(JSON.stringify(events)).not.toContain("other");
@@ -171,7 +188,17 @@ describe("local diagnostic evidence", () => {
     api.record("menu_ready", null, { menuItems: 102 });
     const events = (await report()).events;
     expect(events).toHaveLength(80);
-    expect(events.at(-1)).toMatchObject({ kind: "menu_ready", menuItems: 102 });
+    expect(events.at(-1)).toMatchInlineSnapshot(`
+      {
+        "context": "background",
+        "frames": [],
+        "kind": "menu_ready",
+        "menuItems": 102,
+        "name": null,
+        "site": null,
+        "timestamp": 1767225600000,
+      }
+    `);
     expect(JSON.stringify(events)).not.toContain("discard");
   });
 
@@ -183,17 +210,19 @@ describe("local diagnostic evidence", () => {
       url: "private",
       raw: "private",
     });
-    expect((await report()).events.at(-1)).toEqual({
-      kind: "adapter_error",
-      name: null,
-      frames: [],
-      menuItems: 0,
-      pollIntervalMs: 1000000,
-      pendingTimers: 0,
-      context: "background",
-      site: null,
-      timestamp: 1767225600000,
-    });
+    expect((await report()).events.at(-1)).toMatchInlineSnapshot(`
+      {
+        "context": "background",
+        "frames": [],
+        "kind": "adapter_error",
+        "menuItems": 0,
+        "name": null,
+        "pendingTimers": 0,
+        "pollIntervalMs": 1000000,
+        "site": null,
+        "timestamp": 1767225600000,
+      }
+    `);
   });
 
   it("limits both bursts and admission rate, then resumes without a timer", async () => {
@@ -225,22 +254,31 @@ describe("local diagnostic evidence", () => {
     const result = await report();
     expect(result.lastWriteFailed).toBe(false);
     expect(result.failedWritesSinceWorkerStart).toBe(1);
-    expect(result.events.map((entry) => entry.kind)).toEqual(["worker_start", "menu_ready"]);
+    expect(result.events.map((entry) => entry.kind)).toMatchInlineSnapshot(`
+      [
+        "worker_start",
+        "menu_ready",
+      ]
+    `);
   });
 
   it("surfaces export and clear storage failures as typed retry-safe errors", async () => {
     chrome.storage.local.get.mockRejectedValueOnce(new Error("unavailable"));
-    expect(await request("export")).toEqual({
-      ok: false,
-      error: "diagnostics_storage_unavailable",
-      retrySafe: true,
-    });
+    expect(await request("export")).toMatchInlineSnapshot(`
+      {
+        "error": "diagnostics_storage_unavailable",
+        "ok": false,
+        "retrySafe": true,
+      }
+    `);
     chrome.storage.local.remove.mockRejectedValueOnce(new Error("unavailable"));
-    expect(await request("clear")).toEqual({
-      ok: false,
-      error: "diagnostics_storage_unavailable",
-      retrySafe: true,
-    });
+    expect(await request("clear")).toMatchInlineSnapshot(`
+      {
+        "error": "diagnostics_storage_unavailable",
+        "ok": false,
+        "retrySafe": true,
+      }
+    `);
     expect((await report()).events).toHaveLength(1);
   });
 
@@ -318,12 +356,14 @@ describe("content-world hooks", () => {
       action: "record",
       event: { kind: "error", name: "Error", frames: ["content/skippy-netflix.js:12:3"] },
     });
-    expect((await report()).events.map((entry) => entry.kind)).toEqual([
-      "worker_start",
-      "content_start",
-      "error",
-      "unhandled_rejection",
-    ]);
+    expect((await report()).events.map((entry) => entry.kind)).toMatchInlineSnapshot(`
+      [
+        "worker_start",
+        "content_start",
+        "error",
+        "unhandled_rejection",
+      ]
+    `);
   });
 
   it("bounds messages during a persistent adapter failure", () => {
@@ -346,10 +386,12 @@ describe("content-world hooks", () => {
       event: { kind: "adapter_error", name: "TypeError", frames: ["content/skippy-core.js:90:4"] },
     });
     getURL.mockRestore();
-    expect((await report()).events.map((entry) => entry.kind)).toEqual([
-      "worker_start",
-      "content_start",
-    ]);
+    expect((await report()).events.map((entry) => entry.kind)).toMatchInlineSnapshot(`
+      [
+        "worker_start",
+        "content_start",
+      ]
+    `);
   });
 
   it("does not retry or create unhandled rejections when the worker is unavailable", async () => {
@@ -362,9 +404,11 @@ describe("content-world hooks", () => {
     api.record("adapter_error");
     await settle();
     expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(2);
-    expect((await report()).events.map((entry) => entry.kind)).toEqual([
-      "worker_start",
-      "content_start",
-    ]);
+    expect((await report()).events.map((entry) => entry.kind)).toMatchInlineSnapshot(`
+      [
+        "worker_start",
+        "content_start",
+      ]
+    `);
   });
 });

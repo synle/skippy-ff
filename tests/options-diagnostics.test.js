@@ -24,10 +24,12 @@ it("exports copyable JSON without network or clipboard access", async () => {
   document.getElementById("diagnostics-export").click();
   await settle();
   expect(sendMessage).toHaveBeenCalledWith({ type: "SKIPPY_DIAGNOSTICS", action: "export" });
-  expect(JSON.parse(document.getElementById("diagnostics-output").value)).toEqual({
-    schemaVersion: 1,
-    events: [],
-  });
+  expect(JSON.parse(document.getElementById("diagnostics-output").value)).toMatchInlineSnapshot(`
+    {
+      "events": [],
+      "schemaVersion": 1,
+    }
+  `);
   expect(document.getElementById("diagnostics-output-label").hidden).toBe(false);
   expect(document.getElementById("diagnostics-status").textContent).toContain(
     "Native crash cause remains unknown",

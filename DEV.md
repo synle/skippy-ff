@@ -39,18 +39,19 @@ The manifest's `name` is suffixed with `(DEV)` in watch mode so you can tell whi
 
 ## Useful npm scripts
 
-| Command                 | Purpose                                                  |
-| ----------------------- | -------------------------------------------------------- |
-| `npm run dev`           | Vite watch build → `dist/`                               |
-| `npm run build`         | Emit storage declarations, then build `dist/` with Vite  |
-| `npm run bundle`        | Zip `dist/` → `skippy-ff.zip` (the release artifact)     |
-| `npm run package`       | `build` + `bundle`                                       |
-| `npm run test`          | Vitest run                                               |
-| `npm run test:coverage` | Separate coverage gate; see § Tests                      |
-| `npm run lint`          | ESLint over `src/`                                       |
-| `npm run format`        | oxfmt (see `.oxfmtrc.json`) on the whole tree            |
-| `npm run format:check`  | Check formatting without writing                         |
-| `npm run validate`      | `test + lint + build + format` — run before every commit |
+| Command                         | Purpose                                                  |
+| ------------------------------- | -------------------------------------------------------- |
+| `npm run dev`                   | Vite watch build → `dist/`                               |
+| `npm run build`                 | Emit storage declarations, then build `dist/` with Vite  |
+| `npm run bundle`                | Zip `dist/` → `skippy-ff.zip` (the release artifact)     |
+| `npm run package`               | `build` + `bundle`                                       |
+| `npm run test:update-snapshots` | Regenerate inline snapshots in one-shot update mode      |
+| `npm run test`                  | Vitest run                                               |
+| `npm run test:coverage`         | Separate coverage gate; see § Tests                      |
+| `npm run lint`                  | ESLint over `src/`                                       |
+| `npm run format`                | oxfmt (see `.oxfmtrc.json`) on the whole tree            |
+| `npm run format:check`          | Check formatting without writing                         |
+| `npm run validate`              | `test + lint + build + format` — run before every commit |
 
 ## Adding a new streaming site
 
@@ -173,6 +174,8 @@ npm run test:coverage  # with coverage gate (thresholds in vite.config.js)
 ```
 
 Tests live in `tests/`. Storage tests use `tests/_chromeMock.js` and `vi.stubGlobal("chrome", chrome)`. Worker and diagnostics suites provide their own API mocks.
+
+For assertion selection, follow `AGENTS.md` § Test assertions. Inline snapshots live beside their assertions, not in separate snapshot files. Regenerate them with `npm run test:update-snapshots`; this accepts current output as the new expectation. To scope an update, pass a test path: `npm run test:update-snapshots -- tests/menu.test.js`. The command runs once and exits without watch mode. Review every snapshot diff against the intended contract, then rerun tests without update mode. Do not regenerate snapshots to conceal a regression.
 
 Coverage is separate from `npm run validate`. `vite.config.js` includes helpers, core, background, and the diagnostics UI controller; it excludes live adapters and the main options controller. The configured project-wide thresholds are 50% for lines, statements, branches, and functions. For code changes, also measure at least 80% changed-code line and branch coverage where available. Overall coverage alone does not prove changed-code coverage.
 

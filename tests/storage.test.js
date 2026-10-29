@@ -29,7 +29,35 @@ describe("SkippyStorage", () => {
 
   it("returns defaults when storage is empty", async () => {
     const settings = await getSkippySettings();
-    expect(settings).toEqual(SKIPPY_DEFAULTS);
+    expect(settings).toMatchInlineSnapshot(`
+      {
+        "enabledSites": {
+          "amcplus.com": true,
+          "crunchyroll.com": true,
+          "disneyplus.com": true,
+          "max.com": true,
+          "netflix.com": true,
+          "paramountplus.com": true,
+          "peacocktv.com": true,
+          "primevideo.com": true,
+          "shudder.com": true,
+          "tubitv.com": true,
+          "tv.apple.com": true,
+        },
+        "nextEpisode": true,
+        "pollIntervalMs": 500,
+        "searchProviders": {
+          "google": true,
+          "imdb": false,
+          "rottentomatoes": true,
+        },
+        "siteOverrides": {},
+        "skipCredits": true,
+        "skipIntro": true,
+        "skipRecap": true,
+        "verboseLogging": false,
+      }
+    `);
   });
 
   it("merges saved partial over defaults", async () => {
@@ -203,17 +231,26 @@ describe("SkippyStorage", () => {
   });
 
   it("ships SKIPPY_SITE_OVERRIDE_DEFAULTS with useOverride=false and every flag on", () => {
-    expect(SKIPPY_SITE_OVERRIDE_DEFAULTS).toEqual({
-      useOverride: false,
-      skipIntro: true,
-      skipRecap: true,
-      skipCredits: true,
-      nextEpisode: true,
-    });
+    expect(SKIPPY_SITE_OVERRIDE_DEFAULTS).toMatchInlineSnapshot(`
+      {
+        "nextEpisode": true,
+        "skipCredits": true,
+        "skipIntro": true,
+        "skipRecap": true,
+        "useOverride": false,
+      }
+    `);
   });
 
   it("exposes the canonical flag-key list — drives master + per-site iteration", () => {
-    expect(SKIPPY_FLAG_KEYS).toEqual(["skipIntro", "skipRecap", "skipCredits", "nextEpisode"]);
+    expect(SKIPPY_FLAG_KEYS).toMatchInlineSnapshot(`
+      [
+        "skipIntro",
+        "skipRecap",
+        "skipCredits",
+        "nextEpisode",
+      ]
+    `);
   });
 
   // --- SKIPPY_SITES canonical site list ----------------------------------------------
@@ -247,14 +284,16 @@ describe("SkippyStorage", () => {
       },
     });
     const settings = await getSkippySettings();
-    // Saved fields stick.
-    expect(settings.siteOverrides["crunchyroll.com"].useOverride).toBe(true);
-    expect(settings.siteOverrides["crunchyroll.com"].skipIntro).toBe(false);
-    // Unspecified flag fields backfill from SKIPPY_SITE_OVERRIDE_DEFAULTS so a partial
-    // record doesn't read back with `undefined` flags.
-    expect(settings.siteOverrides["crunchyroll.com"].skipRecap).toBe(true);
-    expect(settings.siteOverrides["crunchyroll.com"].skipCredits).toBe(true);
-    expect(settings.siteOverrides["crunchyroll.com"].nextEpisode).toBe(true);
+    // Partial saves retain explicit values and backfill every unspecified flag.
+    expect(settings.siteOverrides["crunchyroll.com"]).toMatchInlineSnapshot(`
+      {
+        "nextEpisode": true,
+        "skipCredits": true,
+        "skipIntro": false,
+        "skipRecap": true,
+        "useOverride": true,
+      }
+    `);
   });
 
   // --- getEffectiveSiteSettings — the per-site override rule --------------------------
@@ -263,14 +302,16 @@ describe("SkippyStorage", () => {
     it("returns master flags when site has no override record", async () => {
       const settings = await getSkippySettings();
       const eff = getEffectiveSiteSettings(settings, "crunchyroll.com");
-      expect(eff).toEqual({
-        enabled: true,
-        skipIntro: true,
-        skipRecap: true,
-        skipCredits: true,
-        nextEpisode: true,
-        source: "master",
-      });
+      expect(eff).toMatchInlineSnapshot(`
+        {
+          "enabled": true,
+          "nextEpisode": true,
+          "skipCredits": true,
+          "skipIntro": true,
+          "skipRecap": true,
+          "source": "master",
+        }
+      `);
     });
 
     it("propagates master flag changes to sites that follow master", async () => {
@@ -299,14 +340,16 @@ describe("SkippyStorage", () => {
       });
       const settings = await getSkippySettings();
       const eff = getEffectiveSiteSettings(settings, "disneyplus.com");
-      expect(eff).toEqual({
-        enabled: false,
-        skipIntro: false,
-        skipRecap: false,
-        skipCredits: false,
-        nextEpisode: false,
-        source: "disabled",
-      });
+      expect(eff).toMatchInlineSnapshot(`
+        {
+          "enabled": false,
+          "nextEpisode": false,
+          "skipCredits": false,
+          "skipIntro": false,
+          "skipRecap": false,
+          "source": "disabled",
+        }
+      `);
     });
 
     it("returns master flags when useOverride=false even if override flags differ", async () => {
@@ -350,14 +393,16 @@ describe("SkippyStorage", () => {
       });
       const settings = await getSkippySettings();
       const eff = getEffectiveSiteSettings(settings, "netflix.com");
-      expect(eff).toEqual({
-        enabled: true,
-        skipIntro: false,
-        skipRecap: false,
-        skipCredits: true,
-        nextEpisode: false,
-        source: "site",
-      });
+      expect(eff).toMatchInlineSnapshot(`
+        {
+          "enabled": true,
+          "nextEpisode": false,
+          "skipCredits": true,
+          "skipIntro": false,
+          "skipRecap": false,
+          "source": "site",
+        }
+      `);
     });
 
     it("isolates one site's override from another — master still applies to siblings", async () => {

@@ -21,6 +21,10 @@ Skippy is a Chrome MV3 extension that auto-clicks streaming skip buttons. It use
 9. **Settings defaults are additive**, never breaking. Add new flags to `SKIPPY_DEFAULTS`, hydrate in `options.js`, and render controls in `options.html`. Choose defaults that preserve existing behavior.
 10. **Use one release skill.** For release requests, read `.claude/skills/release/SKILL.md` (`/skill:release`). It owns routing, confirmation behavior, summaries, and custom-note restrictions. For manual dispatch and tag-resolution constraints, see `ARCHITECTURE.md` § CI/CD.
 
+## Test assertions
+
+Prefer `toMatchInlineSnapshot` over literal `toEqual` or `toMatchObject` assertions for stable, structured outputs such as settings, menu payloads, and diagnostic records. Keep snapshots small and deterministic; pin or match nondeterministic fields without hiding contract-relevant values. Keep direct assertions for scalars, identity, counts, timing, privacy exclusions, empty values, and relationships between outputs when they express the contract better. Follow `DEV.md` § Tests to regenerate snapshots and review every changed expectation; never accept updates solely because tests pass.
+
 ## Runtime regression boundaries
 
 Earlier fixes addressed duplicate menu IDs, overlapping rebuilds, hidden-tab polling, and synthetic-click strobing. These extension defects do not establish a native browser-crash cause.
