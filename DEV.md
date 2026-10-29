@@ -1,17 +1,17 @@
 # Development guide
 
-How to work on Skippy locally. Read alongside `ARCHITECTURE.md` (system map) and `AGENTS` (project rules).
+Local workflows for Skippy. Read alongside `ARCHITECTURE.md` for the system map and `AGENTS.md` for repository rules.
 
 ## Prereqs
 
-- Node 20.19.1 (pinned via Volta — `volta install` if missing).
+- Node matching `package.json` → `volta.node` (currently 20.19.1).
 - Chrome with Developer mode enabled.
 
 ## First-time setup
 
 ```bash
-npm install
-npm run build      # produces dist/
+npm ci --ignore-scripts
+npm run build      # produces dist/ and storage declarations in types/
 ```
 
 Then in Chrome:
@@ -37,28 +37,41 @@ The manifest's `name` is suffixed with `(DEV)` in watch mode so you can tell whi
 
 ## Useful npm scripts
 
-| Command                 | Purpose                                                      |
-| ----------------------- | ------------------------------------------------------------ |
-| `npm run dev`           | Vite watch build → `dist/`                                   |
-| `npm run build`         | One-off production build (also runs `tsc` for type checking) |
-| `npm run bundle`        | Zip `dist/` → `skippy-ff.zip` (the release artifact)         |
-| `npm run package`       | `build` + `bundle`                                           |
-| `npm run test`          | Vitest run                                                   |
-| `npm run test:coverage` | Vitest with coverage thresholds (see `vite.config.js`)       |
-| `npm run lint`          | ESLint over `src/`                                           |
-| `npm run format`        | oxfmt (see `.oxfmtrc.json`) on the whole tree                |
-| `npm run validate`      | `test + lint + build + format` — run before every commit     |
+| Command                 | Purpose                                                  |
+| ----------------------- | -------------------------------------------------------- |
+| `npm run dev`           | Vite watch build → `dist/`                               |
+| `npm run build`         | Emit storage declarations, then build `dist/` with Vite  |
+| `npm run bundle`        | Zip `dist/` → `skippy-ff.zip` (the release artifact)     |
+| `npm run package`       | `build` + `bundle`                                       |
+| `npm run test`          | Vitest run                                               |
+| `npm run test:coverage` | Separate coverage gate; see § Tests                      |
+| `npm run lint`          | ESLint over `src/`                                       |
+| `npm run format`        | oxfmt (see `.oxfmtrc.json`) on the whole tree            |
+| `npm run format:check`  | Check formatting without writing                         |
+| `npm run validate`      | `test + lint + build + format` — run before every commit |
 
 ## Adding a new streaming site
 
-Three touches + one shared list. See `ARCHITECTURE.md` § Build pipeline for the why.
+Update four source files, then related documentation. See `ARCHITECTURE.md` § Build pipeline for the classic-script build constraints.
 
-1. **Adapter** — create `src/content/skippy-<site>.js`. End with `SkippyCore.skippyStart(adapter)`. The adapter signature is `(settings) => HTMLElement | null` and should resolve the effective flags via `SkippyStorage.getEffectiveSiteSettings(settings, "<host>")` at the top. Refer to `skippy-appletv.js` for the multi-strategy template (testid → class → text), `skippy-disneyplus.js` for shadow-DOM traversal, `skippy-crunchyroll.js` for the simple `aria-label` case, `skippy-netflix.js` for the forgiving `data-uia` substring + normalized case-insensitive text fallback, `skippy-primevideo.js` for the class-substring + multi-text-label variant (Amazon's `atvwebplayersdk-*` prefix + Skip Intro / Skip intro casing variance).
-2. **Manifest** — add a `content_scripts` entry in `src/manifest.json` with the site's host patterns under `matches`, and list `helpers/diagnostics.js`, `helpers/storage.js`, `content/skippy-core.js`, then your new adapter under `js` (order matters: globals before consumers).
-3. **Build plugin** — add a `copyFileSync` line in `vite.config.js`'s `skippy-copy-manifest` plugin for the new content script. Content scripts are **not** Vite inputs — they're copied verbatim because MV3 content scripts can't be ES modules.
-4. **Centralized site list** — append a `{ host, label, urlPatterns }` entry to `SKIPPY_SITES` in `src/helpers/storage.js` and add the host to `SKIPPY_DEFAULTS.enabledSites` with `true`. The `urlPatterns` array must mirror the manifest `matches`. Both the options-page site cards and the background service worker's context menu are generated from this list — no extra UI wiring.
+1. **Adapter** — create `src/content/skippy-<site>.js` with signature `(settings) => HTMLElement | null`. Resolve flags through `SkippyStorage.getEffectiveSiteSettings(settings, "<host>")` and end with `SkippyCore.skippyStart(adapter)`.
+2. **Manifest** — add the site's host patterns under `content_scripts[].matches` in `src/manifest.json`. Load `helpers/diagnostics.js`, `helpers/storage.js`, `content/skippy-core.js`, then the adapter under `js`; globals must precede consumers.
+3. **Build plugin** — add a `copyFileSync` for the adapter in `vite.config.js`'s `skippy-copy-manifest` plugin. Content scripts are copied verbatim, not bundled as Vite ES-module inputs.
+4. **Centralized site list** — add `{ host, label, urlPatterns }` to `SKIPPY_SITES` in `src/helpers/storage.js`. Add the host to `SKIPPY_DEFAULTS.enabledSites` with `true`. Mirror the manifest `matches` in `urlPatterns`. Options cards and menu branches come from this list; no extra per-site UI wiring is needed.
 
-After: `npm run validate`, reload the extension in Chrome, and test on the live site.
+Selector examples in `src/content/`:
+
+- `skippy-appletv.js`: test ID, class, and text strategies.
+- `skippy-disneyplus.js`: shadow-DOM traversal.
+- `skippy-crunchyroll.js`: `aria-label` matching.
+- `skippy-netflix.js`: `data-uia` substrings and normalized, case-insensitive text.
+- `skippy-primevideo.js`: `atvwebplayersdk-*` class substrings and multiple text variants, including Skip Intro / Skip intro.
+
+Update README supported sites and settings, plus `AGENTS.md` / `ARCHITECTURE.md` / this guide when their guidance changes. AMC+ and Shudder already share an adapter; retain separate site keys.
+
+After the final edits, run `npm run validate`, reload the extension, and test the live site. Inspect the formatter's diff before staging. Never hand-edit generated `dist/` or `types/` files.
+
+`build:types` emits storage declarations with `checkJs: false`; it is not full JavaScript type checking. If an install needs a dependency lifecycle script, review that script before running it separately.
 
 ## Right-click context menu
 
@@ -67,11 +80,15 @@ A background service worker (`src/background.js`) registers top-level **Skippy `
 - **Enable on `<Site>`** — toggles `enabledSites[host]`.
 - **Follow master settings** — inverse of `siteOverrides[host].useOverride`.
 - **Skip Intro / Skip Recap / Skip Credits / Auto start next episode** — toggling any flag flips `useOverride` true on the site (same behavior as the options page card).
-- **Search Movie Information** — opens enabled Rotten Tomatoes, IMDb, or Google searches for the current title.
+- **Search Movie Information** — opens an encoded provider search using selected text, or the decoded final URL path segment as fallback. It does not read the page title. Choose providers in settings; Rotten Tomatoes and Google default on, IMDb defaults off. Provider order follows `SKIPPY_SEARCH_PROVIDERS`.
 
 When the site is disabled, the four flag rows and "Follow master settings" are hidden; only Enable remains in that site's branch.
 
-The menu is rebuilt from scratch on `onInstalled`, `onStartup`, and every `chrome.storage.onChanged.sync` event — `chrome.contextMenus` is append-only, so `removeAll` + recreate is the simplest way to keep checkboxes in sync after a settings save from any surface (popup, options page, another tab's menu). On `contextMenus.onShown`, site visibility is updated from the current tab URL, while **Search Movie Information** stays in both the right-click page menu and the toolbar menu.
+Menus rebuild on initial worker load, `onInstalled`, `onStartup`, and sync changes to `skippySettings`. The rebuild queue waits for `removeAll` and every create callback before starting another rebuild. Failed rebuilds cannot poison later work. Create failures attempt in-place updates; callback `runtime.lastError` values are consumed and reported.
+
+When `contextMenus.onShown` exists, the worker shows only the matching site branch and title search on supported URLs. Unsupported or missing URLs hide those branches. Registration stays optional for browsers without the event; dynamic toolbar filtering is unavailable there. Right-click items also carry `documentUrlPatterns`.
+
+Known source mismatch: `handleContextMenuShown` still updates `skippy:settings`, but neither menu builder creates that ID. A callback error on this update records `menu_error`; this does not establish a native crash. A runtime fix needs a separate regression covering updates to unregistered IDs. Global settings remain available in the popup/options page.
 
 To debug context-menu issues, inspect the service worker: `chrome://extensions/` → Skippy → **Inspect views: service worker**. `[Skippy] context menu …` warnings land in that console.
 
@@ -79,7 +96,7 @@ To debug context-menu issues, inspect the service worker: `chrome://extensions/`
 
 ### Verbose logging
 
-The extension is silent by default. To see scan + click diagnostics:
+Routine scan logs are off by default. Click lines, failure warnings, and bounded local diagnostics remain active independently of verbose logging. To see scan details:
 
 1. Open the options page → **Debugging** → check **Verbose logging**.
 2. Hard-reload the streaming-site tab.
@@ -112,27 +129,39 @@ For Windows Brave reports:
 5. Reproduce in a separate test profile using the same content and versions: no extensions, Skippy only, other extensions only, then Skippy plus others. Keep the daily profile unchanged.
 6. If only a combination reproduces, enable other extensions in halves within the test profile. If no-extension runs also crash, investigate Brave/Windows/graphics drivers with native reports.
 
-No Windows native-crash reproduction was performed for this change. Synthetic JS exceptions test logging, not browser crash detection. Never deliberately crash a daily browser to test this feature.
+Windows native-crash reproduction remains unverified. Synthetic JavaScript exceptions test logging, not browser crash detection. Never deliberately crash a daily browser to test this feature.
 
 Sources: [Chrome worker lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle), [content-script isolation](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts), [Dev-channel-only processes API](https://developer.chrome.com/docs/extensions/reference/api/processes), [Brave manual crash reporting](https://support.brave.app/hc/en-us/articles/22281484910221-How-do-I-manually-submit-crash-reports). Brave reporting instructions were verified from its search excerpt; direct retrieval returned HTTP 403.
 
 ### `__skippy()` inspector
 
-Each adapter installs a `__skippy()` function on the page's `window`. Paste it in the Console to dump current state — visible candidates, rects, shadow-root presence. Works regardless of the verbose-logging setting; useful for one-off probes without committing to the noisy stream.
+Adapters install `__skippy()` on their content-script window. Use it to inspect candidates, rectangles, and shadow-root state independently of verbose logging. If DevTools cannot find it, select Skippy's content-script execution context rather than the top-page context.
 
 ### "Skip button is on screen but Skippy doesn't fire"
 
 Walk this list:
 
 1. **Is the adapter loaded?** Search Console for `[Skippy/<site>] adapter loaded`. Missing → the page is on a host the `matches` pattern doesn't cover. Check `src/manifest.json`.
-2. **Did the poll loop start?** Search for `[Skippy] polling started`. Missing → storage helper failed to load. Inspect `helpers/storage.js`.
-3. **Are scan candidates found?** With verbose on, look at the adapter's `scan: …` line. `0` means selectors don't match — DOM has drifted, update the adapter.
-4. **Is the candidate considered visible?** Adapter logs `visible=true/false`. If `false`, walk the eight-gate ladder in `skippy-core.js` (`skippyIsVisible`) — typical culprits are an ancestor with `aria-hidden="true"` or `inert`, `opacity:0` idle-fade, or a zero-rect from `transform: scale(0)` / `clip-path`. Paste the standalone probe snippet from the Console (see `__skippy()` in each adapter, or any of the `probeByAriaLabel` patterns) to see which specific gate is failing. The permissive `skippyIsPresent` fallback drops the opacity + pointer-events gates but still rejects aria-hidden / inert — author-intent signals never get bypassed.
-5. **Click fires but nothing happens?** Watch for `[Skippy] click via …` lines. Multi-strategy click should land on the real handler; if not, the button may be inside a closed shadow root — manual `__skippy()` inspection will confirm.
+2. **Did the poll loop start?** Enable verbose logging and look for `[Skippy] polling started`. Hidden documents intentionally pause scans; make the tab visible first. Check failure warnings and helper load order before blaming selectors.
+3. **Are scan candidates found?** With verbose logging on, inspect the adapter's `scan: …` line at an expected skip moment. Zero candidates can indicate selector drift; inspect the live DOM before changing selectors.
+4. **Is the candidate considered visible?** For `visible=false`, inspect `skippyIsVisible` and `__skippy()` output. Check ancestor `aria-hidden="true"` / `inert`, computed styles, and rectangle dimensions. `opacity:0` idle fades and `transform: scale(0)` are common examples. The permissive `skippyIsPresent` drops opacity and pointer-events checks but still rejects `aria-hidden` / `inert`.
+5. **Click fires but nothing happens?** Inspect verbose `[Skippy] click via …` lines and the chosen target. Core uses native `.click()` only. Do not restore synthetic mouse events without reproducing the earlier control-overlay strobe loop.
 
 ### Manually triggering events
 
 The streaming sites only render skip buttons at specific moments (intro, recap, credits). For deterministic testing, scrub the player to ~5 seconds before the event. End-credits buttons often appear in the last 90 seconds of an episode.
+
+### Menu and polling regression checks
+
+Use a separate test profile with multiple supported tabs, including hidden tabs:
+
+- Check site/search menu visibility on supported and unsupported URLs from both page and toolbar menus.
+- Check provider toggles, order, encoded searches, and unique IDs. An opaque URL ID is not a resolved movie title; select title text for a useful query.
+- Change settings rapidly and confirm rebuilds do not overlap or leave stale checkboxes.
+- Hide and restore streaming tabs; confirm no hidden-tab scans and only one timeout on resume.
+- Compare caught-error evidence with the actual failure; `menu_ready` records attempted items, not guaranteed success.
+
+Live browser checks complement jsdom tests; they do not prove a native crash cause.
 
 ## Tests
 
@@ -141,7 +170,11 @@ npm test               # one-shot
 npm run test:coverage  # with coverage gate (thresholds in vite.config.js)
 ```
 
-Tests live in `tests/`. Chrome APIs are mocked via `tests/_chromeMock.js` and `vi.stubGlobal("chrome", chrome)`. The mock implements the slice of `chrome.storage` and `chrome.storage.onChanged` that `helpers/storage.js` actually uses.
+Tests live in `tests/`. Storage tests use `tests/_chromeMock.js` and `vi.stubGlobal("chrome", chrome)`. Worker and diagnostics suites provide their own API mocks.
+
+Coverage is separate from `npm run validate`. `vite.config.js` includes helpers, core, background, and the diagnostics UI controller; it excludes live adapters and the main options controller. The configured project-wide thresholds are 50% for lines, statements, branches, and functions. For code changes, also measure at least 80% changed-code line and branch coverage where available. Overall coverage alone does not prove changed-code coverage.
+
+Run the final `npm run validate` once after the last edit. It writes formatting across the tree; inspect the resulting diff before staging. `npm run format:check` checks without writing.
 
 | File                          | Covers                                                                                    |
 | ----------------------------- | ----------------------------------------------------------------------------------------- |
@@ -161,7 +194,9 @@ Adapter logic (DOM selectors, visibility) is tested manually in the browser. Pin
 
 ## Release
 
-Release is dispatched through `/skill:release` after a merge to `main`. Every unspecified request is official; beta requires explicit beta/prerelease/test wording. The skill summarizes commits since the last official release and leaves custom notes/changesets unset so the workflow generates them.
+Read `.claude/skills/release/SKILL.md` for release requests; `/skill:release` is the documented entry point. Official releases use clean, validated `main` synchronized with `origin/main`; beta accepts an explicitly requested remote commit.
+
+Unspecified requests mean official. Beta requires explicit beta/prerelease/test wording, never branch or SHA inference. The skill checks for an in-progress release before dispatching. It summarizes commits since the last official release and leaves custom notes/changesets unset so the workflow generates notes. It asks no routing or confirmation questions when the requested action is clear.
 
 The official workflow bumps `npm version minor`, drafts a release, runs `npm run package`, commits the bump back to main, and publishes the release with `skippy-ff.zip` attached. Beta uses `release-beta.yml`. See `ARCHITECTURE.md` § CI/CD.
 

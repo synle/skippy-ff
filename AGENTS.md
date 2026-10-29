@@ -1,41 +1,41 @@
 # AGENTS
 
-Guidance for Claude Code (claude.ai/code) when working in this repository.
+Repository guidance for coding agents. Read `ARCHITECTURE.md` for the system map and `DEV.md` for the development workflow before non-trivial work.
 
-Read `ARCHITECTURE.md` for the system map and `DEV.md` for the development workflow **before** non-trivial work. This file is rules only.
+## Project
 
-## Project (one-liner)
+Skippy is a Chrome MV3 extension that auto-clicks streaming skip buttons. It uses plain JavaScript and Vite, without frameworks.
 
-Skippy is a Chrome MV3 extension that auto-clicks "Skip Intro / Recap / Credits" buttons on Crunchyroll, Disney+ (also covers Hulu content since the catalogs merged), Apple TV, Netflix, Prime Video, Max, Paramount+, Peacock, Tubi, AMC+, and Shudder. Plain JS + Vite 6, no frameworks. A background service worker registers a right-click context menu so the per-site toggles are reachable without opening the options page.
-
-AMC+ and Shudder share a single content script (`skippy-amcplus.js`) because both sites run the same JW Player-based AMC Networks stack. Each domain still has its own `enabledSites` toggle so users can disable one without the other.
-
-There is no separate Hulu adapter — Hulu's catalog now streams through Disney+'s player, so the Disney+ adapter covers it. Don't open a Hulu-only adapter.
+`src/helpers/storage.js` owns supported sites, search providers, and settings defaults. AMC+ and Shudder share `skippy-amcplus.js` but retain separate site toggles. Disney+ covers Hulu content within its player; do not add a Hulu-only adapter.
 
 ## Rules
 
-1. **`npm run validate` before every commit** — runs test + lint + build + format.
-2. **JSDoc every touched function** — one-line description, params, return, raised errors, side effects. Update in the same edit when signature or behavior changes. Trivial one-liners can skip.
-3. **Add a test for every behavior change** in `helpers/storage.js`, `helpers/menu.js`, `background.js`, or in the pure DOM-predicate helpers in `content/skippy-core.js` (`skippyIsVisible`, `skippyIsPresent`, `skippyFindVisible`). Adapter DOM-selector changes are tested manually in the browser (see `DEV.md` § Debugging) — site DOMs churn too fast to be worth fixturing.
-4. **Squash merge only.** Never merge commits or rebase merges. Author = local `.gitconfig`.
-5. **Update `DEV.md` / `ARCHITECTURE.md`** when adding a site, changing the build pipeline, or introducing a new global helper. Keep the README's settings table and supported-sites list in sync with `SKIPPY_DEFAULTS`.
-6. **Adding a new streaming site is a 3-file change** — adapter (`src/content/skippy-<site>.js`), manifest entry, `copyFileSync` in `vite.config.js`, plus an entry in `SKIPPY_SITES` + `SKIPPY_DEFAULTS.enabledSites` (both in `src/helpers/storage.js`). Options-page cards and context-menu items are generated from `SKIPPY_SITES` — no per-site UI wiring. Step-by-step in `DEV.md`.
-7. **Content scripts AND the background service worker are classic scripts, not ES modules** (MV3 constraint for content scripts; we follow the same pattern in `background.js` via `importScripts` for cross-script wiring consistency). Cross-script wiring goes through `globalThis.*` (`SkippyStorage`, `SkippyCore`, `SkippyMenu`). The options page is the only ES-module surface.
-8. **All diagnostic logs go through `SkippyCore.skippyLog` / `skippyDLog`** — silent unless `settings.verboseLogging` is on. The `[Skippy] clicking …` line is the only exception (always on, so users can confirm a skip fired).
-9. **Settings defaults are additive**, never breaking. New flag → add to `SKIPPY_DEFAULTS`, hydrate in `options.js`, render a row in `options.html`, default to a value that preserves existing behavior.
-10. **Use one release skill.** `/skill:release` defaults every unspecified request to official; beta requires explicit beta/prerelease/test wording. It asks no confirmation questions, summarizes commits since the last official release, and leaves custom notes/changesets unset. `release-official` is `workflow_dispatch` only; tag is derived via `synle/workflows/.../resolve-tag` (no `github.ref_name` fallback). See `ARCHITECTURE.md` § CI/CD.
+1. **`npm run validate` before every commit** — runs test, lint, build, then format. It rewrites formatting; inspect the resulting diff before staging. Coverage is separate: see `DEV.md` § Tests.
+2. **JSDoc every touched function** — document a one-line description, params, return, raised errors, and side effects. Update documentation with signature or behavior changes. Trivial one-liners can skip.
+3. **Add a test for every behavior change** in storage, menu, background, core helpers, polling lifecycle, and diagnostics, including the diagnostics UI. Keep adapter DOM-selector checks manual in the browser; see `DEV.md` § Debugging and § Tests.
+4. **Squash merge only.** Never use merge commits or rebase merges for PRs. Use the local Git commit identity.
+5. **Update `DEV.md` / `ARCHITECTURE.md`** when adding a site, changing the build pipeline, or introducing a global helper. Keep README settings and supported sites aligned with `SKIPPY_DEFAULTS` and `SKIPPY_SITES`.
+6. **Adding a new streaming site touches four source files** — adapter, `src/manifest.json`, `vite.config.js`, and `src/helpers/storage.js`. Follow `DEV.md` § Adding a new streaming site, including helper load order and matching URL patterns. Generate options cards and menu items from `SKIPPY_SITES`; do not add per-site UI wiring.
+7. **Content scripts AND the background service worker are classic scripts, not ES modules.** Share runtime helpers through `globalThis.SkippyStorage`, `SkippyCore`, `SkippyMenu`, and `SkippyDiagnostics`. Use `importScripts` in the worker; the options page is the only extension ES-module surface.
+8. **Routine diagnostic logs go through `SkippyCore.skippyLog` / `skippyDLog`** and require `settings.verboseLogging`. Keep the `[Skippy] clicking …` line always on. Failure warnings and bounded local diagnostics also remain independent of verbose logging; do not silence those failure paths.
+9. **Settings defaults are additive**, never breaking. Add new flags to `SKIPPY_DEFAULTS`, hydrate in `options.js`, and render controls in `options.html`. Choose defaults that preserve existing behavior.
+10. **Use one release skill.** Read `.claude/skills/release/SKILL.md` for release requests; `/skill:release` is the documented entry point. Unspecified requests mean official; beta requires explicit beta/prerelease/test wording, never branch or SHA inference. Ask no routing or confirmation questions when the action is clear. Summarize commits since the last official release and leave custom notes/changesets unset. Official releases are manual dispatches; use the workflow's resolve-tag action, never a `github.ref_name` fallback. See `ARCHITECTURE.md` § CI/CD.
 
-## Crash prevention
+## Runtime regression boundaries
 
-The previous menu/polling incident had two compounding causes:
+Earlier fixes addressed duplicate menu IDs, overlapping rebuilds, hidden-tab polling, and synthetic-click strobing. These extension defects do not establish a native browser-crash cause.
 
-- The background worker created one top-level `Skippy` submenu per supported site. Each branch repeated the same visible label, multiplied context-menu entries and rebuild work, and made concurrent rebuild failures harder to diagnose.
-- Every supported content-script tab kept re-arming a DOM polling timeout, including hidden tabs. Many open streaming tabs therefore continued scanning and handling timers when the user could not see them.
+- Keep URL-scoped top-level `Skippy <Site> Settings` branches and one `Search Movie Information` submenu. Do not restore repeated generic `Skippy` roots. Test counts, unique IDs, parent relationships, provider order, and URL scoping.
+- Serialize menu rebuilds through Chrome callback completion. A failed rebuild must not poison later rebuilds. Keep `contextMenus.onShown` registration optional for browsers without that event.
+- Each polling loop owns one timeout. Clear it when `document.visibilityState !== "visible"`; resume only from `visibilitychange`. Do not use unbounded `setInterval` or create a second timer on resume.
+- Add hidden-tab pause/resume and rebuild-serialization regressions whenever the corresponding lifecycle changes.
+- Keep native `.click()` dispatch. Do not restore synthetic mouse events without reproducing the earlier control-overlay strobe loop.
+- Before changing selectors for a crash report, inspect timer ownership, menu counts, rebuild concurrency, and adapter errors. Reproduce with multiple supported tabs, including hidden tabs.
 
-Prevent regressions:
+## Diagnostics and crash attribution
 
-- Keep one shared top-level context-menu root. Put site-specific options under URL-scoped `<Site> Options` branches, and keep global settings in one separate item.
-- Treat `SKIPPY_SITES` as data, not permission to create duplicate top-level UI. Test menu item count, IDs, parent relationships, and URL scoping.
-- Every content-script polling loop must have one owned timeout, clear it when `document.visibilityState !== "visible"`, and resume only from `visibilitychange`. Do not use unbounded `setInterval` or create a second timer on resume.
-- Add regression tests for hidden-tab pause/resume and for background menu rebuild serialization whenever menu or polling lifecycle code changes.
-- Before diagnosing a browser crash as a site-adapter issue, inspect timer counts, context-menu item counts, rebuild concurrency, and adapter exceptions. Reproduce with several supported tabs and hidden tabs before changing selectors.
+Preserve the local-only, bounded collector and worker-owned persistence queue. Keep sender validation and sanitized error evidence; do not collect raw error messages, browsing URLs, titles, or other-extension inventories.
+
+Do not add heartbeat keepalives, periodic storage writes, remote telemetry, or new permissions to infer crashes. Normal MV3 worker sleep is not a crash. Native crash attribution requires browser reports and controlled reproduction; JavaScript exceptions alone cannot prove it.
+
+For retention limits, export/clear behavior, privacy, and Brave/Windows investigation, read `DEV.md` § Persistent diagnostics and Brave/Windows crash triage.

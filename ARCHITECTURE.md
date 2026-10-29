@@ -1,177 +1,178 @@
 # Architecture
 
-System map for Skippy. Read alongside `DEV.md` (development workflow) and `AGENTS` (project-specific rules).
+System map for Skippy. Read alongside `DEV.md` for workflows and `AGENTS.md` for repository rules.
 
 ## High-level
 
-Skippy is a Chrome Extension (Manifest V3) that auto-clicks "Skip Intro / Recap / Credits" buttons on streaming services. Each supported site loads a content script that polls the DOM for a visible skip button and clicks it. A background service worker registers a right-click context menu so per-site toggles are reachable without opening the options page. Settings live in `chrome.storage.sync` and are mutated from three surfaces: the options page (also used as the action popup), the context menu, and any future call site.
+Skippy is a Chrome Manifest V3 extension. Content scripts poll supported streaming pages for skip buttons and click them automatically.
 
-Hulu's catalog now streams through Disney+'s player after the catalog merger, so the Disney+ adapter covers Hulu content. There is no standalone `hulu.com` adapter.
+Settings live in `chrome.storage.sync`. The options page, toolbar popup, and context menu update those settings. Diagnostic evidence stays separately in `chrome.storage.local`.
 
+`src/helpers/storage.js` defines supported sites, providers, and defaults. AMC+ and Shudder share one adapter but retain separate toggles. Disney+ covers Hulu content within its player; the manifest has no standalone `hulu.com` adapter.
+
+### Runtime wiring
+
+```text
+Streaming tab — classic scripts, in manifest order:
+  helpers/diagnostics.js → helpers/storage.js → content/skippy-core.js → adapter
+  SkippyDiagnostics       SkippyStorage        SkippyCore              skippyStart
+
+Background worker — classic scripts:
+  importScripts("helpers/diagnostics.js") → SkippyDiagnostics.init("background")
+  importScripts("helpers/storage.js", "helpers/menu.js")
+  serialized menu rebuilds + click routing + diagnostic message/persistence queue
+
+Options page / popup — ES modules:
+  options.js → import helpers/storage.js for global initialization
+             → import pages/options/diagnostics.js for export/clear controls
+
+Settings:    options/menu → chrome.storage.sync → onChanged → content settings
+Diagnostics: content → runtime message → worker → chrome.storage.local
+             options → runtime message → worker → export/clear response
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│  Streaming-site tab (e.g. tv.apple.com, www.crunchyroll.com)           │
-│                                                                        │
-│   ┌───────────────┐    ┌────────────────┐    ┌─────────────────────┐  │
-│   │ helpers/      │ →  │ content/       │ →  │ content/            │  │
-│   │ storage.js    │    │ skippy-core.js │    │ skippy-<site>.js    │  │
-│   │ (classic)     │    │ (classic)      │    │ (classic, adapter)  │  │
-│   └───────┬───────┘    └────────┬───────┘    └─────────┬───────────┘  │
-│           │  globals             │ globals              │              │
-│           ▼                      ▼                      ▼              │
-│           SkippyStorage          SkippyCore         (calls             │
-│           (chrome.storage        (poll loop,         SkippyCore.       │
-│            wrapper)               click, log)        skippyStart)      │
-└────────────────────────────────────────────────────────────────────────┘
-                │ chrome.storage.onChanged
-                ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│  Options page (chrome-extension://…/pages/options/options.html)        │
-│                                                                        │
-│   options.js  ───import──►  helpers/storage.js                         │
-│   (ES module)                (side-effect global init)                 │
-└────────────────────────────────────────────────────────────────────────┘
-                │ chrome.storage.onChanged
-                ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│  Background service worker (background.js, classic)                    │
-│                                                                        │
-│   importScripts("helpers/storage.js", "helpers/menu.js")               │
-│         │                                                              │
-│         ▼                                                              │
-│   rebuildContextMenus() → chrome.contextMenus.create(payload[])        │
-│         │                                                              │
-│         ▼                                                              │
-│   chrome.contextMenus.onClicked → parseSkippyMenuItemId(id) →          │
-│   SkippyStorage.saveSkippySettings(patch)                              │
-└────────────────────────────────────────────────────────────────────────┘
-```
+
+Content scripts and the worker share helpers through `globalThis`, not ES-module imports. The options page is the only extension ES-module surface.
 
 ## Components
 
 ### `src/helpers/storage.js`
 
-Single source of truth for settings. Wraps `chrome.storage.sync` with a defaults merge so callers never have to handle "first run" branches. Exposes `globalThis.SkippyStorage` because both content scripts (loaded as classic scripts) and the options page (loaded as an ES module) need it. The options page additionally `import`s it for side-effect global initialization.
+`globalThis.SkippyStorage` wraps sync storage with defaults merging. `SKIPPY_SITES` supplies options cards and menu branches; its URL patterns must match `src/manifest.json`.
+
+`SKIPPY_SEARCH_PROVIDERS` defines provider IDs, labels, display order, and URL templates. `SKIPPY_FLAG_KEYS` defines the four skip flags shared by master settings and site overrides.
 
 **Settings shape** (`SKIPPY_DEFAULTS`):
 
-| Key              | Type                           | Default | Purpose                                                                                                                                                                                                                           |
-| ---------------- | ------------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `skipIntro`      | `boolean`                      | `true`  | Master: click "Skip Intro" / equivalent when visible                                                                                                                                                                              |
-| `skipRecap`      | `boolean`                      | `true`  | Master: click "Skip Recap" / equivalent when visible                                                                                                                                                                              |
-| `skipCredits`    | `boolean`                      | `true`  | Master: click "Skip Credits" / equivalent when visible                                                                                                                                                                            |
-| `nextEpisode`    | `boolean`                      | `true`  | Master: auto-start next episode at end-of-episode chrome (separate step from `skipCredits`)                                                                                                                                       |
-| `verboseLogging` | `boolean`                      | `false` | When on, content scripts emit diagnostic logs to the DevTools console                                                                                                                                                             |
-| `pollIntervalMs` | `number`                       | `500`   | Page-scan cadence in ms; clamped to `[SKIPPY_POLL_MIN_MS=100, SKIPPY_POLL_MAX_MS=5000]` at save and read                                                                                                                          |
-| `enabledSites`   | `Record<string, bool>`         | all on  | Per-site enable toggle keyed by site hostname                                                                                                                                                                                     |
-| `siteOverrides`  | `Record<string, SiteOverride>` | `{}`    | Optional per-site override of the four skip flags. `SiteOverride = { useOverride, skipIntro, skipRecap, skipCredits, nextEpisode }`. When `useOverride=true`, that site's adapter uses the site flags instead of the master flags |
+| Key               | Type                           | Default                                               | Purpose                                                                      |
+| ----------------- | ------------------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `skipIntro`       | `boolean`                      | `true`                                                | Click intro skip buttons                                                     |
+| `skipRecap`       | `boolean`                      | `true`                                                | Click recap skip buttons                                                     |
+| `skipCredits`     | `boolean`                      | `true`                                                | Click credits skip buttons                                                   |
+| `nextEpisode`     | `boolean`                      | `true`                                                | Start the next episode; independent of credits skipping                      |
+| `verboseLogging`  | `boolean`                      | `false`                                               | Enable routine content-script console diagnostics                            |
+| `pollIntervalMs`  | `number`                       | `500`                                                 | Scan cadence in milliseconds; clamped to 100–5000 on save and during polling |
+| `enabledSites`    | `Record<string, boolean>`      | all on                                                | Enable or disable each supported site                                        |
+| `siteOverrides`   | `Record<string, SiteOverride>` | `{}`                                                  | Per-site skip flags and `useOverride`                                        |
+| `searchProviders` | `Record<string, boolean>`      | `{ rottentomatoes: true, imdb: false, google: true }` | Choose title-search menu providers                                           |
 
-**Per-site flag resolution** is centralized in `SkippyStorage.getEffectiveSiteSettings(settings, siteKey)` so the rule lives in one place:
+`getSkippySettings()` merges defaults with persisted values. It merges enabled sites and search providers by key, and each site override against `SKIPPY_SITE_OVERRIDE_DEFAULTS`.
 
-1. `enabledSites[siteKey] === false` → every flag returns `false`, `source = "disabled"`.
-2. `siteOverrides[siteKey].useOverride === true` → returns the site's own flag values, `source = "site"`.
-3. Otherwise → returns the master flag values, `source = "master"`.
+A `SiteOverride` contains `useOverride`, `skipIntro`, `skipRecap`, `skipCredits`, and `nextEpisode`. Missing override flags default to `true`; missing `useOverride` defaults to `false`.
 
-Every adapter calls this helper at the top of its `findXxxSkipButton(settings)` invocation and consumes the resolved object instead of reading `settings.skipIntro` / `settings.enabledSites[host]` directly.
+Adapters resolve flags through `getEffectiveSiteSettings(settings, siteKey)`:
+
+1. `enabledSites[siteKey] === false` returns all flags false and `source = "disabled"`.
+2. An override with `useOverride === true` returns its flags and `source = "site"`.
+3. Otherwise, master flags apply and `source = "master"`.
 
 ### `src/helpers/diagnostics.js`
 
-Classic-script `globalThis.SkippyDiagnostics` exposes `init(context)` and `record(kind, error?, metrics?)`. Content scripts load it before storage/core/adapters; core installs content hooks before the adapter executes. The worker imports and initializes it before importing storage/menu, allowing best-effort import-error capture. Registration is synchronous; persistence waits in a serialized worker-owned queue.
+Classic-script `globalThis.SkippyDiagnostics` exposes `init(context)` and `record(kind, error?, metrics?)`. Core initializes content hooks before adapters execute. The worker initializes hooks before importing storage and menu helpers.
 
-Only the worker writes `skippyDiagnostics` in `chrome.storage.local`. It keeps 80 sanitized events, limits pending operations to 20, and admits at most 20 events per minute per context. A rejected operation cannot poison subsequent writes. Error evidence contains allowlisted error types and Skippy file/line frames, not arbitrary messages or external URLs. Supported site keys come from authenticated Chrome sender metadata and the existing menu URL matcher, not message-supplied identity.
+Only the worker writes `skippyDiagnostics` in local storage. Its bounded, serialized queue handles persistence, export, and clear. A rejected operation cannot poison later operations.
 
-Internal `SKIPPY_DIAGNOSTICS` messages support `record` from supported content tabs and `export`/`clear` from the exact extension options-page URL. Export and clear share the write queue. The options-only `src/pages/options/diagnostics.js` renders copyable JSON and accessible error status. No remote telemetry, new permissions, heartbeat, or keepalive is used. Native crash attribution stays unknown; normal worker restarts are informational. See `DEV.md` for retention, privacy, and Brave/Windows triage limits.
+Error evidence contains allowlisted error types and Skippy file/line frames, not arbitrary messages or external URLs. Supported site keys derive from browser-supplied sender metadata and the menu URL matcher.
+
+Internal `SKIPPY_DIAGNOSTICS` messages accept `record` from supported content tabs and `export`/`clear` from the exact extension options-page URL. The options-only controller renders copyable JSON and accessible failure status.
+
+There is no remote telemetry, new permission, heartbeat, or keepalive. Normal worker starts are informational; native crash attribution remains unknown.
+
+For retention limits, privacy, dropped-event behavior, and Brave/Windows investigation, see `DEV.md` § Persistent diagnostics and Brave/Windows crash triage.
 
 ### `src/content/skippy-core.js`
 
-Site-agnostic primitives. **Classic script** (MV3 content scripts can't be ES modules) that attaches helpers to `globalThis.SkippyCore`.
+`globalThis.SkippyCore` supplies visibility, click, polling, and logging helpers.
 
-- **Visibility gating** — `skippyIsVisible` is the strict gate, eight fail-fast checks in order: `isConnected` → `closest('[aria-hidden="true"]')` → `closest('[inert]')` → computed `display !== "none"` → computed `visibility !== "hidden"` → `getBoundingClientRect()` > 0×0 → computed `opacity > 0` → computed `pointer-events !== "none"`. The aria-hidden + inert walks use `closest` to cover ancestor cascades in a single DOM read. The opacity gate is strictly > 0 (anything not fully transparent counts) so a button mid-fade-in starts counting as visible the moment it paints any pixels; the pointer-events gate is a tie-breaker — programmatic `.click()` bypasses it, so it only fires when paired with another gate (typically the Crunchyroll `opacity:0 + pointer-events:none` idle fade). `skippyIsPresent` is the permissive variant — same first six gates, drops opacity + pointer-events. Use it when a site fades skip buttons while keeping their click handler wired (Apple TV's chrome idle). Author-intent signals (aria-hidden + inert) are kept on in both variants.
-- **Click dispatch** — `skippyClick` handles four cases: direct click target (`<button>`, `<a>`, `[role="button"]`), open shadow root with inner button, hit-test fallback via `document.elementFromPoint`, and a last-resort composed MouseEvent. Composed events are required so listeners inside enclosing shadow roots fire.
-- **Polling loop** — `skippyStart(adapter, options?)` uses a `setTimeout` re-arm pattern so it can read `settings.pollIntervalMs` on every tick — a slider change in the options page takes effect on the next iteration without a restart. The loop clears its pending timeout while `document.visibilityState` is not `visible` and resumes on `visibilitychange`, avoiding DOM scans in background tabs without using window focus (which is unreliable across multiple displays). The interval is clamped via `SkippyStorage.clampPollIntervalMs` as a defensive fallback. Each click has a per-element cooldown (default 2000 ms) so a still-mounted button isn't re-clicked while the site advances. Settings are loaded once + re-loaded on `chrome.storage.onChanged`.
-- **Verbose logging** — `skippyLog` and `skippyDLog` (throttled) gate all diagnostic output behind `settings.verboseLogging`. The single "[Skippy] clicking …" line is exempt so users can confirm a skip fired without enabling the full verbose stream.
+**Visibility:** `skippyIsVisible` checks element type, connection, ancestor `aria-hidden="true"`, ancestor `inert`, computed display/visibility, positive rectangle dimensions, opacity, and pointer events. Each failing gate independently rejects the candidate.
 
-### `src/content/skippy-<site>.js` — site adapters
+`skippyIsPresent` retains the connection, author-intent, display/visibility, and rectangle gates but drops opacity and pointer-events checks. Adapters use it for mounted buttons whose player chrome fades while handlers remain active. Neither helper bypasses `aria-hidden` or `inert`.
 
-One adapter per streaming service. Each one:
+**Click dispatch:** `skippyClick` tries a native `.click()` on a button, link, or `[role="button"]`. It then tries an open-shadow-root inner button, an `elementFromPoint` hit target, and finally the original element.
 
-1. Receives current settings from the polling loop.
-2. Returns a visible `HTMLElement` to click, or `null`.
-3. Ends with `SkippyCore.skippyStart(adapterFn)`.
+Synthetic mouse-event dispatch is disabled. Earlier synthetic events reactivated player controls and caused repeated click/strobe loops.
 
-Adapter strategies trend from strict (per-site `aria-label` exact match on Crunchyroll) to multi-strategy with shadow-DOM traversal (Disney+, Apple TV) and forgiving attribute-OR-text matching (Netflix). The latter is necessary when a site:
+**Polling:** `skippyStart(adapter, options?)` owns one re-armed timeout and reads the latest interval on each tick. It clears the timeout while the document is hidden and resumes on `visibilitychange`, not window focus.
 
-- Renders skip UI behind open shadow roots (Disney+ `<disney-web-player-ui>`).
-- Uses unstable class names (Svelte hash churn on Apple TV — primary selector is `data-testid`; class + text are fallbacks).
-- Embeds the player in a same-origin iframe (Apple TV — manifest entry uses `all_frames: true`).
-- Renders skip prompts as plain `<button>` elements identified by `data-uia` token (Netflix `player-skip-intro`, `player-skip-recap`, `next-episode-seamless-button`). Adapter probes the `data-uia` substring AND a normalized, case-insensitive text match in parallel so either drifting independently keeps clicks firing.
-- Identifies skip prompts by a class-name substring (Prime Video's `atvwebplayersdk-skipelement-*`, `atvwebplayersdk-nextupcard-*`) with multiple text-label variants accepted in parallel ("Skip Intro" / "Skip intro" / "Next Up"). Two strategies in parallel — Amazon has reshuffled the class prefix more than once.
+The interval uses `SkippyStorage.clampPollIntervalMs`. A per-element cooldown defaults to 2000 ms. Settings load once and refresh through `chrome.storage.onChanged`.
 
-Adapters expose a `__skippy()` console inspector for manual debugging from DevTools, regardless of the verbose-logging setting.
+If initial settings loading fails, skipping stays disabled rather than guessing which sites the user enabled. Adapter exceptions produce bounded diagnostic evidence and deduplicated warnings without killing future ticks.
+
+**Logging:** `skippyLog` gates routine logs behind `verboseLogging`; startup messages wait in a bounded buffer until settings resolve. `skippyDLog` suppresses repeated identical messages per key. Click lines, failure warnings, and local diagnostic collection remain independent of verbose logging.
+
+### `src/content/skippy-<site>.js` — adapters
+
+Each adapter receives settings, resolves effective site flags, and returns a clickable `HTMLElement` or `null`. It starts the shared loop with `SkippyCore.skippyStart(adapterFn)`.
+
+Selectors and strict-versus-permissive visibility choices belong in adapters, not the shared polling loop. Strategies include aria labels, test IDs, class substrings, normalized text, and open shadow roots.
+
+Apple TV's manifest entry uses `all_frames: true` for its framed player. AMC+ and Shudder share `skippy-amcplus.js` for their common player stack.
+
+Adapters expose `__skippy()` inspectors for manual DevTools investigation. See `DEV.md` for selector examples and the debugging checklist.
 
 ### `src/pages/options/`
 
-Single-page settings UI. Vite is the bundler — `options.html` is the only HTML input. `options.js` is an ES module that `import`s `helpers/storage.js` for side-effect global init, then renders one card per `SkippyStorage.SKIPPY_SITES` entry and binds checkboxes to storage via `SkippyStorage`. The same page is reused as the action popup.
+`options.html` is Vite's only HTML input and serves as both settings page and action popup. `options.js` imports storage for global initialization and imports `diagnostics.js` for export/clear controls.
+
+Site cards come from `SKIPPY_SITES`; search-provider controls come from `SKIPPY_SEARCH_PROVIDERS`. Settings changes persist through `SkippyStorage`.
 
 ### `src/helpers/menu.js`
 
-Pure helper for the background service worker. `buildSkippyRootMenuItems(urlPatterns)` builds the top-level global settings entry. `buildSkippyContextMenuItems(settings, site)` returns one top-level URL-scoped site settings branch with nested controls. `parseSkippyMenuItemId(id)` resolves a click back to `{ host, action, flag? }`. Exposed via `globalThis.SkippyMenu`. Extracted into its own helper so the menu shape can be unit-tested without the SW runtime.
+`globalThis.SkippyMenu` exposes pure menu and search helpers:
+
+- `buildSkippyRootMenuItems(urlPatterns, settings)` builds `Search Movie Information` and enabled provider children, not a global settings item.
+- `buildSkippyContextMenuItems(settings, site)` builds one URL-scoped top-level `Skippy <Site> Settings` branch with nested controls.
+- `buildSkippySiteVisibilityUpdates(sites, pageUrl)` selects branches matching the current URL.
+- `parseSkippyMenuItemId(id)` parses search actions. The worker separately parses site enable, follow, and flag IDs.
+- `extractTitleSearchQuery(info)` prefers selected text, then the decoded final URL path segment with hyphens/underscores replaced by spaces.
+- `buildTitleSearchUrl(service, query)` encodes the query into a configured provider template. It does not read the page title or resolve opaque video IDs.
 
 ### `src/background.js`
 
-Background service worker. Classic SW (not `type: "module"`) that `importScripts("helpers/storage.js", "helpers/menu.js")` to pick up `SkippyStorage` + `SkippyMenu`, then:
+The classic worker loads diagnostics first, then storage and menu helpers. It rebuilds menus on initial load, installation, browser startup, and sync changes to `skippySettings`.
 
-1. Rebuilds the settings menu on `onInstalled`, `onStartup`, and any `chrome.storage.onChanged.sync` event. On `contextMenus.onShown`, updates each site branch's visibility from the current tab URL because browser action menus do not reliably apply `documentUrlPatterns`.
-2. Routes `contextMenus.onClicked` through `parseSkippyMenuItemId` and writes the resulting patch back through `SkippyStorage.saveSkippySettings`. Toggling any flag row sets `siteOverrides[host].useOverride = true` so the user's click has an observable effect (same rule as the options-page card).
-3. Handles title-search clicks from the 'Search Movie Information' submenu. Clicks are routed through `SkippyMenu.extractTitleSearchQuery` → `SkippyMenu.buildTitleSearchUrl` → `chrome.tabs.create`, opening an encoded search URL for the selected provider (Rotten Tomatoes, IMDb, Google) using the current page title or selected text as the query.
+`pendingRebuild` serializes `removeAll` and all item-create callbacks. Create failures attempt in-place updates; callback `runtime.lastError` values are consumed and reported. One failure cannot poison the rebuild queue.
 
-The menu uses top-level site labels `Skippy <Site> Settings` plus a `Search Movie Information` submenu. Search providers come from `SKIPPY_SEARCH_PROVIDERS`, with visibility controlled by `settings.searchProviders`; toolbar and right-click menus share the same provider order and labels.
+When `contextMenus.onShown` exists, the worker refreshes site/search visibility from `pageUrl`. Registration stays optional for browser versions without that event.
+
+Site clicks update settings through `SkippyStorage.saveSkippySettings`. Toggling a flag sets `useOverride = true`; checking Follow master sets it false. Search clicks open an encoded provider URL through `chrome.tabs.create`.
+
+For current menu limitations, including the stale `skippy:settings` visibility update, see `DEV.md` § Right-click context menu.
 
 ## Data flow
 
-```
-options page checkbox change
-        │
-        ▼
-SkippyStorage.saveSkippySettings({ … })
-        │
-        ▼
-chrome.storage.sync.set(…)
-        │
-        ▼
-chrome.storage.onChanged fires in every tab
-        │
-        ▼
-SkippyStorage.onSkippySettingsChanged callback
-(installed by SkippyCore.skippyStart)
-        │
-        ▼
-Re-fetch merged settings, replace closure-local `settings`,
-mirror `verboseLogging` into SkippyCore via skippySetVerbose
-        │
-        ▼
-Next poll tick uses the new settings
-```
+A popup/options checkbox or site-menu click saves a partial settings patch through `SkippyStorage.saveSkippySettings`.
+
+The sync change event refreshes content-script settings and rebuilds the menu. Content scripts mirror `verboseLogging` into core logging; the next poll uses the refreshed settings.
+
+Local diagnostic writes do not trigger sync-settings menu rebuilds.
 
 ## Build pipeline
 
-`vite.config.js` defines two custom plugins:
+`npm run build` first runs `build:types`, then Vite. `tsconfig.json` emits storage declarations into `types/`; `checkJs` is false, so this is not full JavaScript type checking.
 
-1. **`skippy-copy-manifest`** — Reads `src/manifest.json`, rewrites `version` from `package.json` (and appends `(DEV)` to the name in `--watch` mode), writes to `dist/manifest.json`. Also `copyFileSync`s every content script, `helpers/storage.js`, `helpers/menu.js`, `helpers/diagnostics.js`, and `background.js` verbatim into `dist/` — these are not Vite inputs.
-2. **`skippy-move-html`** — Vite emits HTML into `dist/src/pages/…`. This plugin moves them to `dist/pages/…` and rewrites root-style asset paths (`/chunks/…`, `/assets/…`) to relative so they resolve under `chrome-extension://`.
+`vite.config.js` defines two plugins:
 
-`publicDir: "public"` — icons land at `dist/` root, matching paths in `manifest.json`'s `icons` field.
+1. **`skippy-copy-manifest`** copies the manifest, replaces its version from `package.json`, and adds `(DEV)` to its name in watch mode. It copies content scripts, classic helpers, and the worker verbatim into `dist/`.
+2. **`skippy-move-html`** moves emitted HTML into `dist/pages/` and rewrites asset links to extension-relative paths.
 
-**Adding a new streaming site** touches 3 files plus `SKIPPY_SITES`: `src/content/skippy-<site>.js`, a `copyFileSync` in `vite.config.js`, a `content_scripts` entry in `src/manifest.json`, and a `{ host, label, urlPatterns }` entry in `src/helpers/storage.js`'s `SKIPPY_SITES` (also extend `SKIPPY_DEFAULTS.enabledSites`). The options-page card and the context-menu items are generated from `SKIPPY_SITES` — no further UI wiring.
+`public/` supplies icons at the distribution root. `scripts/bundle.js` creates `skippy-ff.zip` from `dist/`.
+
+Adding a site touches four source files; follow `DEV.md` § Adding a new streaming site. Generated `dist/`, `types/`, and coverage output are not source files.
 
 ## Testing
 
-Vitest + jsdom. Chrome APIs are mocked via `tests/_chromeMock.js` + `vi.stubGlobal("chrome", chrome)`. Coverage spans `SkippyStorage` (defaults, merge semantics, change subscriptions), `SkippyMenu` (pure menu shape + id parsing), `skippy-core.js` (visibility predicates, click dispatch, polling loop), and `background.js` (rebuild serialization, create-error reporting, click routing — driven through stubbed `importScripts` + `chrome.contextMenus`). DOM-level adapter behavior is tested manually in the browser — automated coverage there would require fixtures of each site's actual DOM, which churns too fast to be worth pinning. See `DEV.md` § Tests for the per-file breakdown.
+Vitest runs in jsdom. Storage tests use `tests/_chromeMock.js`; worker tests stub `importScripts` and context-menu APIs to drive registered listeners.
+
+Automated coverage includes storage, menu/search helpers, core predicates/clicks/polling, background lifecycle, diagnostics, and diagnostics UI interactions. Live adapter selectors and browser-native crash behavior require manual checks.
+
+`npm run validate` runs tests, lint, build, and the writing formatter. Coverage is a separate command and CI job. See `DEV.md` § Tests for scope and thresholds.
 
 ## CI/CD
 
-- **`build-main.yml`** — runs on push/PR to main/master. Jobs: `test` (lint + vitest, dedicated signal), `build` (reusable `synle/workflows`), `coverage` (vitest with threshold gate), `pr-artifacts` (build + upload `skippy-ff.zip` as PR artifact).
-- **`release-official.yml`** — manual `workflow_dispatch`. Bumps `npm version minor`, drafts a GitHub release, runs `npm run package`, commits the bump, finalizes the release with `skippy-ff.zip` attached.
-- **`release-beta.yml`** — beta channel, off the same skeleton.
+- **`build-main.yml`** runs on pushes and PRs targeting main/master. Jobs cover tests/lint, the reusable build workflow, and coverage; PRs also build and upload `skippy-ff.zip`.
+- **`release-official.yml`** is manual `workflow_dispatch`. It bumps the minor version, resolves a tag, drafts a release, packages the extension, commits the bump, and finalizes the release.
+- **`release-beta.yml`** is manual dispatch with an optional SHA. It marks the packaged manifest as beta, restores the source manifest afterward, and finalizes through the beta channel.
 
-Tag derivation goes through `synle/workflows/.../resolve-tag` (no `github.ref_name` fallback) — safe to dispatch on `--ref main`.
+Release requests use `.claude/skills/release/SKILL.md`; unspecified requests mean official, not inferred beta. The skill summarizes commits since the last official release and leaves custom notes/changesets unset.
+
+Tag derivation uses the workflows' `resolve-tag` action, never a `github.ref_name` fallback. See `DEV.md` § Release for the local workflow.
